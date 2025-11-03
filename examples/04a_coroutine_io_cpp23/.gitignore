@@ -1,0 +1,44 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Example binaries
+examples/echo_server
+examples/*/echo_server
+
+# Test binaries
+tests/unit/test_*
+test_*
+
+# Debugging
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Valgrind
+*.valgrind
+valgrind.log
+*.log
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compilation database
+compile_commands.json
+
+# Core dumps
+core
+core.*
+
+# Temporary files
+*.tmp
+*.temp

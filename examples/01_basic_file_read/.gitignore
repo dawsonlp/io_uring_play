@@ -1,0 +1,15 @@
+# Build artifacts
+*.o
+io_uring_example
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Debug files
+*.dSYM/
+vgcore.*
+core

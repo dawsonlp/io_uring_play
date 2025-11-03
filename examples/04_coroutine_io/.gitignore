@@ -1,0 +1,52 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+
+# Compiled binaries
+/examples/echo_server
+/examples/file_copy
+/examples/http_server
+/tests/unit/test_*
+/tests/integration/test_*
+
+# Build directories
+/build/
+/cmake-build-*/
+/.cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependency files
+*.d
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# Valgrind output
+*.valgrind
+*.memcheck
+
+# Sanitizer output
+*.asan
+*.ubsan
+
+# Documentation build
+/docs/html/
+/docs/latex/
+/docs/doxygen_sqlite3.db
+
+# Test output
+test_results/
+*.log
