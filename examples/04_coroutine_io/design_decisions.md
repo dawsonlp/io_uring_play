@@ -311,16 +311,86 @@ namespace io_uring_async {
 
 ---
 
+---
+
+## 2026-01-11: Kernel Feature Analysis
+
+### Decision 11: Adopt Modern io_uring Optimization Flags
+
+**Context**: January 2026 kernel analysis revealed several io_uring features introduced in kernel 6.x that could significantly improve performance without major code changes.
+
+**Decision**: Implement phased adoption of io_uring kernel features per the new KERNEL_FEATURES_ROADMAP.md
+
+**Key Findings**:
+Current implementation uses basic io_uring API (flags=0) without:
+- Setup optimization flags (SINGLE_ISSUER, DEFER_TASKRUN, COOP_TASKRUN)
+- Multishot operations (accept, recv)
+- Operation cancellation
+- Timeout variants
+- Provided buffers / buffer rings
+
+**Phased Adoption Plan**:
+
+**Phase 1 (Immediate - Low Risk)**:
+- Add IORING_SETUP_SINGLE_ISSUER (matches our single-threaded design)
+- Add IORING_SETUP_DEFER_TASKRUN (reduces context switches)
+- Add IORING_SETUP_COOP_TASKRUN (mentioned in requirements but not implemented)
+- Replace io_uring_wait_cqe() with timeout variant
+
+**Phase 2 (Short-term - Medium Risk)**:
+- Multishot accept for TcpListener
+- Cancel operation support
+- SQE linking for composite operations
+
+**Phase 3 (Medium-term - Higher Complexity)**:
+- Provided buffers / buffer rings
+- Multishot recv
+- Registered buffers
+
+**Rationale**:
+1. **Alignment**: Our single-threaded executor perfectly matches SINGLE_ISSUER semantics
+2. **Performance**: 30-50% syscall reduction expected from setup flags alone
+3. **Educational**: Demonstrates modern kernel capabilities (project goal)
+4. **Low Risk**: Phase 1 changes are backward compatible with fallback
+
+**Alternatives Considered**:
+1. Stay with basic API: Simpler but misses optimization opportunities
+2. Implement all features at once: Too risky, large change set
+3. Wait for kernel stabilization: Kernel 6.17 is already mature
+
+**Trade-offs**:
+- ✓ Better performance without API changes
+- ✓ Demonstrates modern io_uring usage
+- ✓ Aligns with stated design goals (Linux-optimized)
+- ✗ Requires runtime feature detection for older kernels
+- ✗ More complex initialization path
+
+**Implementation Impact**:
+- IoUring::create() will try optimized flags first, fall back to basic
+- Add kernel version/feature logging for debugging
+- New documentation for kernel requirements
+- See `../../KERNEL_FEATURES_ROADMAP.md` for detailed implementation plan
+
+**Files Affected**:
+- `include/io_uring_async/core/io_uring_wrapper.hpp` - add optimized init
+- `include/io_uring_async/runtime/executor.hpp` - timeout-based wait
+- `include/io_uring_async/io/tcp_listener.hpp` - multishot accept (Phase 2)
+- New: `include/io_uring_async/core/buffer_ring.hpp` (Phase 3)
+
+---
+
 ## Future Decisions to Make
 
 The following decisions will be made during implementation:
 
 1. **Coroutine Frame Allocation**: Custom allocator vs compiler optimization?
-2. **Timeout Implementation**: Linked timeouts vs separate operations?
-3. **Multishot Operations**: When to use multishot vs regular operations?
+2. **Timeout Implementation**: Linked timeouts vs separate operations? *(Partially addressed by Decision 11)*
+3. **Multishot Operations**: When to use multishot vs regular operations? *(Addressed by Decision 11 Phase 2)*
 4. **Error Type Design**: Single Error type vs hierarchy?
 5. **Testing Framework**: Which unit test framework to use?
 6. **Benchmark Strategy**: What metrics to measure and how?
+7. **Kernel Feature Detection**: Runtime detection vs compile-time configuration?
+8. **Buffer Ring Sizing**: How many buffers and what sizes for provided buffers?
 
 ---
 

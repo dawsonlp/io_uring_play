@@ -553,21 +553,40 @@ Kernel completes operation
 
 ## 10. Future Directions
 
-### 10.1 Near-Term Enhancements
+### 10.1 Kernel Feature Enhancements (NEW - See KERNEL_FEATURES_ROADMAP.md)
+
+Based on January 2026 kernel analysis, the following io_uring features should be prioritized:
+
+**Phase 1: Immediate (1-2 weeks)**
+1. **Setup Optimization Flags**: Add SINGLE_ISSUER, DEFER_TASKRUN, COOP_TASKRUN to io_uring initialization
+2. **Submit-and-Wait Timeout**: Replace blocking wait with timeout variant for graceful shutdown
+
+**Phase 2: Network Optimizations (2-4 weeks)**
+1. **Multishot Accept**: One SQE for unlimited connection accepts
+2. **Cancel Operations**: Proper cleanup and timeout support
+3. **SQE Linking**: Chain dependent operations
+
+**Phase 3: High-Performance (1-2 months)**
+1. **Provided Buffers / Buffer Rings**: Kernel-managed buffer pools
+2. **Multishot Recv**: Single SQE for all receives on a connection
+3. **Registered Buffers**: Pre-registered buffers for zero-copy
+
+For detailed implementation plans, see `../../KERNEL_FEATURES_ROADMAP.md`.
+
+### 10.2 Application-Level Enhancements
 
 1. **HTTP/1.1 Layer**: Build HTTP server on top of TCP abstractions
 2. **TLS Support**: Integration with OpenSSL/BoringSSL
-3. **Timer Support**: Async delays and timeouts
+3. **Timer Support**: Async delays and timeouts (requires Phase 1 timeout support)
 4. **File I/O**: Async file operations beyond basic read
 
-### 10.2 Medium-Term Evolution
+### 10.3 Architecture Evolution
 
 1. **Thread-Per-Core**: Multiple executor model for multi-core
-2. **Zero-Copy Optimizations**: Registered buffers, splice operations
-3. **Advanced Features**: Multishot operations, provided buffers
-4. **Observability**: Metrics, tracing, debugging tools
+2. **Zero-Copy Optimizations**: Registered buffers, splice operations (Phase 3 prerequisite)
+3. **Observability**: Metrics, tracing, debugging tools
 
-### 10.3 Long-Term Vision
+### 10.4 Long-Term Vision
 
 1. **HTTP/2 and HTTP/3**: Modern protocols
 2. **Influence Standards**: Contribute to C++ networking TS
