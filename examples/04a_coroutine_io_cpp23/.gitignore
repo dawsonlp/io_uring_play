@@ -9,9 +9,10 @@ build/
 examples/echo_server
 examples/*/echo_server
 
-# Test binaries
+# Test binaries (not source files)
 tests/unit/test_*
-test_*
+!tests/unit/test_*.cpp
+!tests/unit/test_*.hpp
 
 # Debugging
 *.dSYM/
@@ -35,8 +36,8 @@ valgrind.log
 # Compilation database
 compile_commands.json
 
-# Core dumps
-core
+# Core dumps (file only, not the core/ directory)
+/core
 core.*
 
 # Temporary files

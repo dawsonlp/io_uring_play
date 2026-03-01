@@ -378,6 +378,60 @@ All decisions can be revisited if new information emerges.
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-10-31  
-**Next Review**: After first production deployment or C++26 release
+---
+
+## 2026-02-28: Complete API Surface Implementation
+
+### Context
+
+The C++23 version was created with only the core headers (error.hpp, task.hpp, io_uring_wrapper.hpp) but was missing the runtime and I/O layers needed to actually use the library. The Makefile referenced files that didn't exist, and `make` failed immediately.
+
+### Decision: Implement Full API Surface
+
+**What was missing**:
+- `runtime/executor.hpp` - Event loop / task scheduler
+- `runtime/awaitable.hpp` - Awaitable wrappers bridging coroutines ↔ io_uring
+- `io/tcp_listener.hpp` - TCP listen/accept abstraction
+- `io/tcp_stream.hpp` - TCP send/receive abstraction
+- Umbrella header `io_uring_async_cpp23.hpp` - Single include entry point
+- Working example (`examples/echo_server.cpp`)
+- Unit tests (`tests/unit/test_headers.cpp`)
+- Implementation file (`src/runtime/awaitable.cpp`)
+
+**What was implemented**:
+All of the above. The API surface is now complete and matches the C++20 version's functionality while applying C++23 improvements.
+
+### Key Implementation Details
+
+1. **Umbrella header** (`io_uring_async_cpp23.hpp`): Documents the full API at a glance - all types, their purposes, and a quick-start example. Single `#include` to use everything.
+
+2. **Task<void> await_resume fix**: The deducing this pattern (`auto&&` return) cannot deduce to `void`. Fixed using C++20 constraints:
+   ```cpp
+   // void specialization - plain return
+   auto await_resume() requires std::is_void_v<T> { ... }
+   
+   // non-void - deducing this
+   template<typename Self>
+   auto&& await_resume(this Self&& self) requires (!std::is_void_v<T>) { ... }
+   ```
+   This is a real-world lesson about deducing this limitations.
+
+3. **Header line comparison** (actual measured):
+   - C++20: 2,087 header lines (8 headers + result.hpp)
+   - C++23: 1,760 header lines (8 headers, no result.hpp)
+   - Reduction: 327 lines (~16%)
+
+4. **Test coverage**: 12 unit tests covering Error, IoUring, Executor, Task, and TcpListener.
+
+### Trade-offs
+- ✓ Library is now actually usable (was previously just core primitives)
+- ✓ `make` works, `make test` passes 12/12
+- ✓ Echo server example demonstrates full API
+- ✓ Single umbrella header for easy consumption
+- ✗ Tests are compilation + basic unit tests; integration tests for real I/O still needed
+
+---
+
+**Document Version**: 1.1  
+**Last Updated**: 2026-02-28  
+**Next Review**: After integration testing or C++26 release
