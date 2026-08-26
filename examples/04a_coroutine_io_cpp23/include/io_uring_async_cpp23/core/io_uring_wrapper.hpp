@@ -234,6 +234,7 @@ public:
         int fd,
         sockaddr* addr,
         socklen_t* addrlen,
+        int flags,
         void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
@@ -241,7 +242,7 @@ public:
             return std::unexpected(sqe_result.error());
         }
         
-        io_uring_prep_accept(sqe_result.value(), fd, addr, addrlen, 0);
+        io_uring_prep_accept(sqe_result.value(), fd, addr, addrlen, flags);
         io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
@@ -299,28 +300,6 @@ public:
         return {};
     }
     
-    /**
-     * @brief Prepare a close operation
-     * 
-     * @param fd File descriptor to close
-     * @param user_data User data to associate with operation
-     * @return std::expected containing void or Error
-     */
-    [[nodiscard]] std::expected<void, Error> prep_close(
-        int fd,
-        void* user_data) noexcept
-    {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_close(sqe_result.value(), fd);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
-    }
-
     /**
      * @brief Prepare cancellation of an operation identified by its user data
      */

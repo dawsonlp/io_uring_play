@@ -6,29 +6,26 @@
 using namespace io_uring_async_cpp23;
 
 struct Outcomes {
-    std::array<bool, 6> failed{};
+    std::array<bool, 5> failed{};
 };
 
 Task<void> exercise_failures(IoUringExecutor& executor, Outcomes& outcomes) {
     std::array<std::byte, 8> buffer{};
 
     auto read = co_await ReadAwaitable(executor, -1, buffer, 0);
-    outcomes.failed[0] = !read && read.error().code() == Error::Code::IoError;
+    outcomes.failed[0] = !read && read.error().code() == Error::Code::InvalidArgument;
 
     auto write = co_await WriteAwaitable(executor, -1, buffer, 0);
-    outcomes.failed[1] = !write && write.error().code() == Error::Code::IoError;
+    outcomes.failed[1] = !write && write.error().code() == Error::Code::InvalidArgument;
 
     auto accept = co_await AcceptAwaitable(executor, -1);
-    outcomes.failed[2] = !accept && accept.error().code() == Error::Code::IoError;
+    outcomes.failed[2] = !accept && accept.error().code() == Error::Code::InvalidArgument;
 
     auto send = co_await SendAwaitable(executor, -1, buffer);
-    outcomes.failed[3] = !send && send.error().code() == Error::Code::IoError;
+    outcomes.failed[3] = !send && send.error().code() == Error::Code::InvalidArgument;
 
     auto receive = co_await RecvAwaitable(executor, -1, buffer);
-    outcomes.failed[4] = !receive && receive.error().code() == Error::Code::IoError;
-
-    auto close = co_await CloseAwaitable(executor, -1);
-    outcomes.failed[5] = !close && close.error().code() == Error::Code::IoError;
+    outcomes.failed[4] = !receive && receive.error().code() == Error::Code::InvalidArgument;
 }
 
 int main() {

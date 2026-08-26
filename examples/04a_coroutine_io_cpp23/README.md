@@ -73,7 +73,9 @@ Task<void> handle_client(TcpStream client) {
         auto result = co_await client.receive(buffer);
         if (!result || result.value() == 0) break;
         
-        co_await client.send(std::span{buffer.data(), result.value()});
+        auto sent = co_await client.send_all(
+            std::span{buffer.data(), result.value()});
+        if (!sent) break;
     }
 }
 

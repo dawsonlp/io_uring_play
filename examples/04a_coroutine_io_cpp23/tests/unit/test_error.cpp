@@ -23,6 +23,7 @@ int main() {
 
     assert(Error(Error::Code::Timeout) == Error(Error::Code::Timeout, "detail"));
     assert(Error(Error::Code::Timeout) != Error(Error::Code::IoError));
+    assert(Error::from_errno(EINTR).code() == Error::Code::Interrupted);
 
     const std::expected<int, Error> good = 42;
     const std::expected<int, Error> bad = std::unexpected(error);

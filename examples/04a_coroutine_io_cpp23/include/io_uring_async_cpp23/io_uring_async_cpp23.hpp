@@ -18,11 +18,11 @@
  *   - AcceptAwaitable    co_await a TCP accept
  *   - SendAwaitable      co_await a TCP send
  *   - RecvAwaitable      co_await a TCP receive
- *   - CloseAwaitable     co_await an fd close
  * 
  * I/O:
  *   - TcpListener        Bind and accept TCP connections
  *   - TcpStream          Send/receive on a connected TCP socket
+ *   - AddressFamily      Select IPv4 or IPv6 listener behavior
  * 
  * Quick start:
  * @code

@@ -438,6 +438,10 @@ public:
         cancellations_.emplace(cancellation_ptr, std::move(cancellation));
         return cancellation_ptr;
     }
+
+    [[nodiscard]] std::size_t test_operation_completion_count() const noexcept {
+        return operation_completion_count_;
+    }
 #endif
     
     // The factory provides stable heap ownership. Executor-bound objects keep
@@ -567,6 +571,9 @@ private:
                 wake_operation_ = nullptr;
                 return {};
             }
+#ifdef IO_URING_ASYNC_TESTING
+            ++operation_completion_count_;
+#endif
             auto continuation = state->continuation;
             if (continuation) {
                 continuation.resume();
@@ -627,6 +634,7 @@ private:
     OperationState* wake_operation_ = nullptr;
 #ifdef IO_URING_ASYNC_TESTING
     std::optional<Error> next_submit_error_;
+    std::size_t operation_completion_count_ = 0;
 #endif
 };
 

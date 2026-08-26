@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 using namespace io_uring_async_cpp23;
 
@@ -18,6 +19,8 @@ Task<void> echo_once(IoUringExecutor& executor, TcpListener& listener,
     if (!accepted) {
         co_return;
     }
+    assert((::fcntl(accepted.value(), F_GETFL) & O_NONBLOCK) != 0);
+    assert((::fcntl(accepted.value(), F_GETFD) & FD_CLOEXEC) != 0);
 
     TcpStream stream(executor, accepted.value());
     std::array<std::byte, 64> buffer{};

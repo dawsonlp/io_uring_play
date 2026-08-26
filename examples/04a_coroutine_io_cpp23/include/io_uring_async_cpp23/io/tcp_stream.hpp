@@ -20,6 +20,7 @@
 #include <span>
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 
 namespace io_uring_async_cpp23 {
 
@@ -59,7 +60,11 @@ public:
      */
     TcpStream(IoUringExecutor& executor, int fd)
         : executor_(&executor)
-        , descriptor_(adopt_descriptor(fd)) {}
+        , descriptor_(fd >= 0 ? adopt_descriptor(fd) : nullptr) {
+        if (!descriptor_) {
+            throw std::invalid_argument("TcpStream requires a valid descriptor");
+        }
+    }
     
     // Move-only semantics
     TcpStream(TcpStream&& other) noexcept
@@ -86,12 +91,43 @@ public:
      * @brief Send data on the stream
      * 
      * Suspends until the data is sent (or an error occurs).
+     * One operation may send fewer bytes than requested. Use `send_all()` when
+     * the entire buffer must be accepted before resuming.
      * 
      * @param buffer The data to send
      * @return SendAwaitable that yields std::expected<size_t, Error>
      */
-    [[nodiscard]] SendAwaitable send(std::span<const std::byte> buffer) {
-        return SendAwaitable(*executor_, descriptor_, buffer);
+    [[nodiscard]] SendAwaitable send(
+        std::span<const std::byte> buffer,
+        int flags = MSG_NOSIGNAL) {
+        return SendAwaitable(*executor_, descriptor_, buffer, flags);
+    }
+
+    /**
+     * @brief Send the entire buffer unless an error interrupts progress
+     *
+     * A failure may be returned after a prefix has already been transmitted.
+     */
+    [[nodiscard]] Task<std::expected<std::size_t, Error>> send_all(
+        std::span<const std::byte> buffer,
+        int flags = MSG_NOSIGNAL) {
+        std::size_t total = 0;
+        while (total < buffer.size()) {
+            auto result = co_await send(buffer.subspan(total), flags);
+            if (!result) {
+                if (result.error().code() == Error::Code::Interrupted) {
+                    continue;
+                }
+                co_return std::unexpected(std::move(result.error()));
+            }
+            if (result.value() == 0) {
+                co_return std::unexpected(Error(
+                    Error::Code::IoError,
+                    "send made no progress for a nonempty buffer"));
+            }
+            total += result.value();
+        }
+        co_return total;
     }
     
     /**
@@ -99,12 +135,15 @@ public:
      * 
      * Suspends until data is received (or an error occurs).
      * Returns 0 bytes if the connection was closed gracefully.
+     * A reset is returned as `Error::Code::ConnectionClosed`.
      * 
      * @param buffer Buffer to receive into
      * @return RecvAwaitable that yields std::expected<size_t, Error>
      */
-    [[nodiscard]] RecvAwaitable receive(std::span<std::byte> buffer) {
-        return RecvAwaitable(*executor_, descriptor_, buffer);
+    [[nodiscard]] RecvAwaitable receive(
+        std::span<std::byte> buffer,
+        int flags = 0) {
+        return RecvAwaitable(*executor_, descriptor_, buffer, flags);
     }
     
     /**
@@ -113,7 +152,11 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown_write() noexcept {
-        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_WR) < 0) {
+        if (!descriptor_) {
+            return std::unexpected(Error(
+                Error::Code::InvalidArgument, "Stream is closed"));
+        }
+        if (::shutdown(descriptor_->fd(), SHUT_WR) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};
@@ -125,7 +168,11 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown_read() noexcept {
-        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_RD) < 0) {
+        if (!descriptor_) {
+            return std::unexpected(Error(
+                Error::Code::InvalidArgument, "Stream is closed"));
+        }
+        if (::shutdown(descriptor_->fd(), SHUT_RD) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};
@@ -137,7 +184,11 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown() noexcept {
-        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_RDWR) < 0) {
+        if (!descriptor_) {
+            return std::unexpected(Error(
+                Error::Code::InvalidArgument, "Stream is closed"));
+        }
+        if (::shutdown(descriptor_->fd(), SHUT_RDWR) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};

@@ -148,9 +148,11 @@ private:
  */
 class AcceptAwaitable : public IoUringAwaitable<int> {
 public:
-    AcceptAwaitable(IoUringExecutor& executor, int fd)
+    AcceptAwaitable(IoUringExecutor& executor, int fd,
+                    int flags = SOCK_NONBLOCK | SOCK_CLOEXEC)
         : IoUringAwaitable(executor)
         , fd_(fd)
+        , flags_(flags)
         , addr_{}
         , addrlen_(sizeof(addr_)) {}
 
@@ -160,6 +162,7 @@ public:
         : IoUringAwaitable(executor)
         , descriptor_(std::move(descriptor))
         , fd_(descriptor_ ? descriptor_->fd() : -1)
+        , flags_(SOCK_NONBLOCK | SOCK_CLOEXEC)
         , addr_{}
         , addrlen_(sizeof(addr_)) {}
     
@@ -178,6 +181,7 @@ protected:
 private:
     std::shared_ptr<DescriptorState> descriptor_;
     int fd_;
+    int flags_;
     sockaddr_storage addr_;
     socklen_t addrlen_;
 };
@@ -244,23 +248,6 @@ private:
     int fd_;
     std::span<std::byte> buffer_;
     int flags_;
-};
-
-/**
- * @brief Awaitable for close operations
- */
-class CloseAwaitable : public IoUringAwaitable<void> {
-public:
-    CloseAwaitable(IoUringExecutor& executor, int fd)
-        : IoUringAwaitable(executor)
-        , fd_(fd) {}
-    
-protected:
-    std::expected<void, Error> submit_operation() override;
-    std::expected<void, Error> process_result(int res) override;
-    
-private:
-    int fd_;
 };
 
 } // namespace io_uring_async_cpp23

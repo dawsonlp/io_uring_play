@@ -61,6 +61,10 @@ template class IoUringAwaitable<void>;
 // ============================================================================
 
 std::expected<void, Error> ReadAwaitable::submit_operation() {
+    if (fd_ < 0) {
+        return std::unexpected(Error(
+            Error::Code::InvalidArgument, "Invalid read descriptor"));
+    }
     return executor_->ring().prep_read(
         fd_, buffer_, offset_, operation_state_);
 }
@@ -77,6 +81,10 @@ std::expected<size_t, Error> ReadAwaitable::process_result(int res) {
 // ============================================================================
 
 std::expected<void, Error> WriteAwaitable::submit_operation() {
+    if (fd_ < 0) {
+        return std::unexpected(Error(
+            Error::Code::InvalidArgument, "Invalid write descriptor"));
+    }
     return executor_->ring().prep_write(
         fd_, buffer_, offset_, operation_state_);
 }
@@ -93,10 +101,14 @@ std::expected<size_t, Error> WriteAwaitable::process_result(int res) {
 // ============================================================================
 
 std::expected<void, Error> AcceptAwaitable::submit_operation() {
+    if (fd_ < 0) {
+        return std::unexpected(Error(
+            Error::Code::InvalidArgument, "Invalid accept descriptor"));
+    }
     return executor_->ring().prep_accept(
         fd_, 
         reinterpret_cast<sockaddr*>(&addr_), 
-        &addrlen_,
+        &addrlen_, flags_,
         operation_state_);
 }
 
@@ -112,6 +124,10 @@ std::expected<int, Error> AcceptAwaitable::process_result(int res) {
 // ============================================================================
 
 std::expected<void, Error> SendAwaitable::submit_operation() {
+    if (fd_ < 0) {
+        return std::unexpected(Error(
+            Error::Code::InvalidArgument, "Invalid send descriptor"));
+    }
     return executor_->ring().prep_send(
         fd_, buffer_, flags_, operation_state_);
 }
@@ -128,6 +144,10 @@ std::expected<size_t, Error> SendAwaitable::process_result(int res) {
 // ============================================================================
 
 std::expected<void, Error> RecvAwaitable::submit_operation() {
+    if (fd_ < 0) {
+        return std::unexpected(Error(
+            Error::Code::InvalidArgument, "Invalid receive descriptor"));
+    }
     return executor_->ring().prep_recv(
         fd_, buffer_, flags_, operation_state_);
 }
@@ -137,21 +157,6 @@ std::expected<size_t, Error> RecvAwaitable::process_result(int res) {
         return std::unexpected(Error::from_errno(-res));
     }
     return static_cast<size_t>(res);
-}
-
-// ============================================================================
-// CloseAwaitable
-// ============================================================================
-
-std::expected<void, Error> CloseAwaitable::submit_operation() {
-    return executor_->ring().prep_close(fd_, operation_state_);
-}
-
-std::expected<void, Error> CloseAwaitable::process_result(int res) {
-    if (res < 0) {
-        return std::unexpected(Error::from_errno(-res));
-    }
-    return {};
 }
 
 } // namespace io_uring_async_cpp23

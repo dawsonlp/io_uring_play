@@ -30,7 +30,7 @@ These invariants govern every phase:
       to destroyed state.
 - [x] Queue saturation and submission failures preserve their original error.
 - [x] Root-task failures are observable by the caller.
-- [ ] Public APIs do not claim stronger behavior than they implement.
+- [x] Public APIs do not claim stronger behavior than they implement.
 
 ---
 
@@ -189,30 +189,36 @@ use-after-free, double resume, stranded coroutine, or descriptor-lifetime race.
 
 **Goal:** Ensure high-level APIs match real stream and kernel behavior.
 
+**Status:** Complete. Primitive and composed transfer semantics, EOF/error
+mapping, accepted-socket flags, IPv4/IPv6 behavior, and close ownership are
+documented and covered by live-kernel tests.
+
 - [x] Pass send and receive flags through every layer or remove the unused flags
       parameters.
-- [ ] Add `send_all()` that correctly handles partial sends.
-- [ ] State clearly that `send()` may complete after sending fewer bytes than
+- [x] Add `send_all()` that correctly handles partial sends.
+- [x] State clearly that `send()` may complete after sending fewer bytes than
       requested.
-- [ ] Decide how interrupted, would-block, and connection-closed results map into
+- [x] Decide how interrupted, would-block, and connection-closed results map into
       the public error model.
 - [x] Query `getsockname()` after binding port zero so `TcpListener::port()` returns
       the actual assigned port.
-- [ ] Validate backlog and descriptor arguments at public boundaries.
-- [ ] Define EOF semantics consistently for files and streams.
-- [ ] Add async close only if its ownership contract is clearer than synchronous
+- [x] Validate backlog and descriptor arguments at public boundaries.
+- [x] Define EOF semantics consistently for files and streams.
+- [x] Add async close only if its ownership contract is clearer than synchronous
       RAII close; otherwise remove `CloseAwaitable` from the public surface.
-- [ ] Decide whether accepted sockets inherit required flags and test them.
-- [ ] Add IPv6/address-family support only after the IPv4 contract is complete.
+- [x] Decide whether accepted sockets inherit required flags and test them.
+- [x] Ensure high-level TCP sends cannot terminate the process through `SIGPIPE`.
+- [x] Document that `send_all()` may fail after transmitting a prefix.
+- [x] Add IPv6/address-family support only after the IPv4 contract is complete.
 
 ### Required tests
 
-- [ ] Forced partial send with eventual full delivery.
-- [ ] Peer closes normally during receive.
-- [ ] Peer resets during send and receive.
-- [ ] Bind to port zero and verify the reported port accepts connections.
-- [ ] Invalid descriptor and invalid argument cases.
-- [ ] Large payload echo spanning many buffer and CQE cycles.
+- [x] Forced partial send with eventual full delivery.
+- [x] Peer closes normally during receive.
+- [x] Peer resets during send and receive.
+- [x] Bind to port zero and verify the reported port accepts connections.
+- [x] Invalid descriptor and invalid argument cases.
+- [x] Large payload echo spanning many buffer and CQE cycles.
 
 **Exit criteria:** Each API documents and implements the exact semantics callers
 need to write correct applications.
