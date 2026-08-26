@@ -6,9 +6,7 @@
  * These types implement the coroutine awaitable interface and manage the
  * lifecycle of async operations.
  * 
- * C++23 improvements over C++20 version:
- * - std::expected instead of custom Result<T,E>
- * - Header-only implementation (no .cpp file needed)
+ * Uses std::expected for explicit operation and preparation failures.
  */
 
 #pragma once

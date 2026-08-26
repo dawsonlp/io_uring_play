@@ -11,6 +11,17 @@
 
 namespace io_uring_async_cpp23 {
 
+namespace {
+
+std::expected<std::size_t, Error> byte_count_result(int result) {
+    if (result < 0) {
+        return std::unexpected(Error::from_errno(-result));
+    }
+    return static_cast<std::size_t>(result);
+}
+
+} // namespace
+
 // ============================================================================
 // IoUringAwaitable<T> base implementations
 // ============================================================================
@@ -70,10 +81,7 @@ std::expected<void, Error> ReadAwaitable::submit_operation() {
 }
 
 std::expected<size_t, Error> ReadAwaitable::process_result(int res) {
-    if (res < 0) {
-        return std::unexpected(Error::from_errno(-res));
-    }
-    return static_cast<size_t>(res);
+    return byte_count_result(res);
 }
 
 // ============================================================================
@@ -90,10 +98,7 @@ std::expected<void, Error> WriteAwaitable::submit_operation() {
 }
 
 std::expected<size_t, Error> WriteAwaitable::process_result(int res) {
-    if (res < 0) {
-        return std::unexpected(Error::from_errno(-res));
-    }
-    return static_cast<size_t>(res);
+    return byte_count_result(res);
 }
 
 // ============================================================================
@@ -133,10 +138,7 @@ std::expected<void, Error> SendAwaitable::submit_operation() {
 }
 
 std::expected<size_t, Error> SendAwaitable::process_result(int res) {
-    if (res < 0) {
-        return std::unexpected(Error::from_errno(-res));
-    }
-    return static_cast<size_t>(res);
+    return byte_count_result(res);
 }
 
 // ============================================================================
@@ -153,10 +155,7 @@ std::expected<void, Error> RecvAwaitable::submit_operation() {
 }
 
 std::expected<size_t, Error> RecvAwaitable::process_result(int res) {
-    if (res < 0) {
-        return std::unexpected(Error::from_errno(-res));
-    }
-    return static_cast<size_t>(res);
+    return byte_count_result(res);
 }
 
 } // namespace io_uring_async_cpp23

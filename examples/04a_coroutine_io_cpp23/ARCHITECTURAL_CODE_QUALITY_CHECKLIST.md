@@ -230,21 +230,25 @@ need to write correct applications.
 **Goal:** Apply KISS and DRY after correctness has established the right
 abstractions.
 
-- [ ] Introduce one private SQE-preparation helper that centralizes:
-  - [ ] SQE acquisition
-  - [ ] queue-full handling
-  - [ ] user-data attachment
-- [ ] Introduce shared completion-result conversion for byte-count operations.
-- [ ] Keep operation-specific policy visible; do not hide important io_uring
+**Status:** Items 5.1 through 5.4 are complete. Strict example input parsing
+remains for the next Phase 5 increment.
+
+- [x] Introduce one private SQE-preparation helper that centralizes:
+  - [x] SQE acquisition
+  - [x] queue-full handling
+  - [x] user-data attachment
+- [x] Introduce shared completion-result conversion for byte-count operations.
+- [x] Keep operation-specific policy visible; do not hide important io_uring
       behavior behind generic metaprogramming.
-- [ ] Remove unused fields, includes, forward declarations, and stale comments.
-- [ ] Reduce public exposure of raw `io_uring` access; document the invariants a
+- [x] Remove unused fields, includes, forward declarations, and stale comments.
+- [x] Reduce public exposure of raw `io_uring` access; document the invariants a
       caller must preserve if raw access remains available.
-- [ ] Consolidate `run()` and `run_once()` completion-draining logic.
-- [ ] Separate executor scheduling policy from ring/completion mechanics if both
-      continue to grow.
+- [x] Consolidate `run()` and `run_once()` completion-draining logic.
+- [x] Separate executor scheduling policy from ring/completion mechanics if both
+      continue to grow. Scheduling remains in the public loop methods; shared
+      submission and CQE mechanics now live in focused private helpers.
 - [ ] Use `std::from_chars` for strict, allocation-free example port parsing.
-- [ ] Keep source files focused enough that ownership and suspension behavior can
+- [x] Keep source files focused enough that ownership and suspension behavior can
       be understood without cross-referencing several unrelated modules.
 
 **Exit criteria:** Duplication is removed at stable abstraction boundaries, with

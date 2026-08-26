@@ -11,8 +11,8 @@
 #include "error.hpp"
 #include <expected>
 #include <liburing.h>
-#include <memory>
 #include <span>
+#include <utility>
 
 namespace io_uring_async_cpp23 {
 
@@ -89,6 +89,7 @@ public:
         return *this;
     }
     
+private:
     /**
      * @brief Get a submission queue entry for preparing an operation
      * 
@@ -102,6 +103,22 @@ public:
         }
         return sqe;
     }
+
+    template<typename Prepare>
+    [[nodiscard]] std::expected<void, Error> prepare_sqe(
+        void* user_data, Prepare&& prepare) noexcept
+    {
+        auto sqe_result = get_sqe();
+        if (!sqe_result) {
+            return std::unexpected(sqe_result.error());
+        }
+
+        std::forward<Prepare>(prepare)(sqe_result.value());
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
+        return {};
+    }
+
+public:
     
     /**
      * @brief Submit pending operations to the kernel
@@ -161,13 +178,6 @@ public:
     }
     
     /**
-     * @brief Get the raw io_uring pointer (for advanced usage)
-     */
-    [[nodiscard]] io_uring* raw() noexcept {
-        return &ring_;
-    }
-    
-    /**
      * @brief Prepare a read operation
      * 
      * @param fd File descriptor
@@ -182,16 +192,9 @@ public:
         uint64_t offset,
         void* user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_read(sqe_result.value(), fd, 
-            buffer.data(), buffer.size(), offset);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
+        return prepare_sqe(user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_read(sqe, fd, buffer.data(), buffer.size(), offset);
+        });
     }
     
     /**
@@ -209,16 +212,9 @@ public:
         uint64_t offset,
         void* user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_write(sqe_result.value(), fd,
-            buffer.data(), buffer.size(), offset);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
+        return prepare_sqe(user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_write(sqe, fd, buffer.data(), buffer.size(), offset);
+        });
     }
     
     /**
@@ -237,15 +233,9 @@ public:
         int flags,
         void* user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_accept(sqe_result.value(), fd, addr, addrlen, flags);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
+        return prepare_sqe(user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_accept(sqe, fd, addr, addrlen, flags);
+        });
     }
     
     /**
@@ -262,16 +252,9 @@ public:
         int flags,
         void* user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_recv(sqe_result.value(), fd,
-            buffer.data(), buffer.size(), flags);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
+        return prepare_sqe(user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_recv(sqe, fd, buffer.data(), buffer.size(), flags);
+        });
     }
     
     /**
@@ -288,16 +271,9 @@ public:
         int flags,
         void* user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-        
-        io_uring_prep_send(sqe_result.value(), fd,
-            buffer.data(), buffer.size(), flags);
-        io_uring_sqe_set_data(sqe_result.value(), user_data);
-        
-        return {};
+        return prepare_sqe(user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_send(sqe, fd, buffer.data(), buffer.size(), flags);
+        });
     }
     
     /**
@@ -307,14 +283,9 @@ public:
         void* target_user_data,
         void* cancel_user_data) noexcept
     {
-        auto sqe_result = get_sqe();
-        if (!sqe_result) {
-            return std::unexpected(sqe_result.error());
-        }
-
-        io_uring_prep_cancel(sqe_result.value(), target_user_data, 0);
-        io_uring_sqe_set_data(sqe_result.value(), cancel_user_data);
-        return {};
+        return prepare_sqe(cancel_user_data, [&](io_uring_sqe* sqe) noexcept {
+            io_uring_prep_cancel(sqe, target_user_data, 0);
+        });
     }
     
 private:
