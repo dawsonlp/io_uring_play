@@ -1,5 +1,10 @@
 # I/O Semantics
 
+> [Overview](README.md) · **I/O semantics** ·
+> [Lifetime semantics](LIFETIME_SEMANTICS.md) ·
+> [Operation lifecycle](OPERATION_LIFECYCLE.md) · [Design](DESIGN_CPP23.md) ·
+> [Roadmap](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+
 This document defines the public byte-stream, EOF, error, and socket-flag
 contracts for the C++23 runtime.
 

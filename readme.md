@@ -1,85 +1,95 @@
 # io_uring Learning Project
 
-Learn and explore Linux io_uring through progressive examples, from basic C file I/O to advanced C++20 coroutine-based async networking.
+This repository explores Linux `io_uring` through progressively larger examples,
+from one file read in C to a tested C++23 coroutine runtime. It is an educational
+project, not a production library or a source of benchmark-backed performance
+claims.
 
-## Project Overview
+## Choose an example
 
-This project demonstrates modern async I/O on Linux using io_uring, progressing from simple to advanced usage patterns:
+| Example | Role | Language | Current status |
+| --- | --- | --- | --- |
+| [`01_basic_file_read`](examples/01_basic_file_read/) | Minimal SQE/CQE file read | C | Runnable introductory example |
+| [`02_basic_file_read_cpp`](examples/02_basic_file_read_cpp/) | RAII wrapper around the basic read | C++ | Runnable introductory example |
+| [`03_async_echo_server`](examples/03_async_echo_server/) | Early async-server design exploration | C++20 design | Design material, not an implementation |
+| [`04_coroutine_io`](examples/04_coroutine_io/) | Earlier coroutine runtime | C++20 | Experimental predecessor with different guarantees |
+| [`04a_coroutine_io_cpp23`](examples/04a_coroutine_io_cpp23/) | Correctness-focused coroutine runtime | C++23 | Actively developed and extensively tested |
 
-| Example | Description | Language | Features |
-|---------|-------------|----------|----------|
-| `01_basic_file_read` | Basic io_uring file read | C | SQE/CQE basics |
-| `02_basic_file_read_cpp` | RAII wrapper for io_uring | C++ | Type safety, RAII |
-| `03_async_echo_server` | Design docs for async server | Design | Architecture |
-| `04_coroutine_io` | Full coroutine-based async I/O library | C++20 | Coroutines, Task<T> |
-| `04a_coroutine_io_cpp23` | C++23 variant with std::expected | C++23 | std::expected |
+The repository has not yet formally designated one coroutine implementation as
+canonical. The C++23 example currently has the most complete lifecycle,
+cancellation, testing, and behavior documentation. Do not assume fixes or
+guarantees in `04a` also exist in the C++20 predecessor.
+
+## Suggested reading paths
+
+For a first look at `io_uring`:
+
+1. Build [`01_basic_file_read`](examples/01_basic_file_read/).
+2. Compare its manual resource management with
+   [`02_basic_file_read_cpp`](examples/02_basic_file_read_cpp/).
+3. Read the [`io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
+   for the kernel programming model.
+
+For coroutine runtime and ownership design:
+
+1. Start with the [C++23 overview](examples/04a_coroutine_io_cpp23/README.md).
+2. Follow its document map for public I/O semantics, lifetime rules, operation
+   transitions, architecture, and roadmap status.
+
+The `03` documents and the C++20 architecture notes are useful as historical
+design exploration. They contain proposals and goals that are not necessarily
+implemented or verified.
 
 ## Requirements
 
-- **Linux Kernel**: 6.17+ (5.19+ minimum with degraded features)
-- **Compiler**: GCC 11+ or Clang 14+ for C++20 coroutines
-- **Library**: liburing (latest version)
+All examples require Linux and `liburing` development files. Compiler standard
+and kernel-feature requirements vary by example; consult the selected example's
+README and Makefile.
 
-## Quick Start
+The project does not currently declare repository-wide minimum kernel,
+`liburing`, GCC, or Clang versions. Establishing and testing those minimums is an
+open portability task for the C++23 runtime.
+
+## Quick start
+
+Basic C example:
 
 ```bash
-# Build the basic C example
-cd examples/01_basic_file_read
-make
-./io_uring_example
-
-# Build the C++20 coroutine library example
-cd examples/04_coroutine_io
-make
-./test_library
+make -C examples/01_basic_file_read
+./examples/01_basic_file_read/io_uring_example
 ```
 
-## Documentation
+C++23 runtime and complete test matrix:
 
-### Core Documentation
+```bash
+make -C examples/04a_coroutine_io_cpp23 MODE=debug test
+make -C examples/04a_coroutine_io_cpp23 matrix
+```
 
-- **[requirements.md](requirements.md)** - Project requirements and goals
-- **[KERNEL_FEATURES_ROADMAP.md](KERNEL_FEATURES_ROADMAP.md)** - io_uring kernel feature adoption roadmap
+Live `io_uring` tests can be unavailable under some seccomp or container
+policies. The C++23 integration runner reports those environmental cases as
+skips while continuing to run its kernel-independent unit suite.
 
-### Example-Specific Documentation
+## Repository-level documents
 
-Each example directory contains:
-- `README.md` - Example-specific overview
-- `design_decisions.md` - Design decisions log
-- Additional architecture/design documents as needed
-
-### Key Design Documents (04_coroutine_io)
-
-- [DESIGN.md](examples/04_coroutine_io/DESIGN.md) - Comprehensive design document
-- [ARCHITECTURE_NOTES.md](examples/04_coroutine_io/ARCHITECTURE_NOTES.md) - Technical implementation notes
-- [USER_GUIDE.md](examples/04_coroutine_io/USER_GUIDE.md) - How to use the library
-
-## Roadmap
-
-See **[KERNEL_FEATURES_ROADMAP.md](KERNEL_FEATURES_ROADMAP.md)** for the planned adoption of modern io_uring features:
-
-### Phase 1: Setup Optimizations (Planned)
-- IORING_SETUP_SINGLE_ISSUER
-- IORING_SETUP_DEFER_TASKRUN
-- IORING_SETUP_COOP_TASKRUN
-- Timeout-based wait operations
-
-### Phase 2: Network Optimizations (Planned)
-- Multishot accept
-- Cancel operations
-- SQE linking
-
-### Phase 3: High-Performance Features (Planned)
-- Provided buffers / buffer rings
-- Multishot recv
-- Registered buffers
+- [`requirements.md`](requirements.md) is the original requirements brief for
+  the first basic example. It is historical context, not a current support
+  policy for every directory.
+- [`KERNEL_FEATURES_ROADMAP.md`](KERNEL_FEATURES_ROADMAP.md) is an exploratory
+  feature-planning snapshot. It is not a statement that listed features are
+  implemented.
+- The C++23
+  [`ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md`](examples/04a_coroutine_io_cpp23/ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+  is the authoritative status and roadmap for that implementation.
 
 ## References
 
 - [Linux `io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
-- [liburing repository](https://github.com/axboe/liburing)
+- [liburing repository and manual pages](https://github.com/axboe/liburing)
 - [LWN io_uring coverage](https://lwn.net/Kernel/Index/#io_uring)
 
-## License
+## Licensing
 
-Educational project for learning io_uring.
+No repository license file is currently present. The educational purpose does
+not itself grant reuse or redistribution rights; an explicit license should be
+added before treating the code as reusable by third parties.

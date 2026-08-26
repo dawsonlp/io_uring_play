@@ -1,5 +1,11 @@
 # io_uring Kernel Features Roadmap
 
+> **Planning snapshot:** This document records candidate features and early
+> estimates from January 2026. It is not implementation status, a support matrix,
+> or benchmark evidence. For the C++23 runtime, use its
+> [architectural checklist](examples/04a_coroutine_io_cpp23/ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+> as the authoritative roadmap.
+
 **Last Updated**: January 2026  
 **Target Kernel**: 6.17+ (current development version compatible)  
 **Analysis Date**: 2026-01-11

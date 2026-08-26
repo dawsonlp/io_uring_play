@@ -1,5 +1,9 @@
 # Example 03: Async Networking with C++20 Coroutines + io_uring
 
+> **Design archive:** This directory describes an early server proposal rather
+> than runnable code. Performance, resource-safety, and production goals in these
+> documents are design targets, not measured or implemented guarantees.
+
 **Status**: 📋 Design Phase - Architecture and system design complete  
 **Target**: Linux Kernel 6.17+, C++20 (GCC 10+, Clang 10+)
 

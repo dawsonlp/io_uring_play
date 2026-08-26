@@ -1,5 +1,10 @@
 # Requirements: Simple io_uring Example Application
 
+> **Document scope:** This is the original brief for the basic C example. Version
+> numbers and “current system” statements below are historical inputs, not the
+> repository's present support policy. Each maintained example documents its own
+> verified environment and open portability work.
+
 ## 1. Project Overview
 
 ### 1.1 Purpose

@@ -1,5 +1,10 @@
 # Design Decision Record
 
+> [Overview](README.md) · [I/O semantics](IO_SEMANTICS.md) ·
+> [Lifetime semantics](LIFETIME_SEMANTICS.md) ·
+> [Operation lifecycle](OPERATION_LIFECYCLE.md) · [Design](DESIGN_CPP23.md) ·
+> **Decisions** · [Roadmap](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+
 This file records decisions implemented by the C++23 example. Proposed work
 belongs in the architectural checklist and is not described here as current
 behavior.

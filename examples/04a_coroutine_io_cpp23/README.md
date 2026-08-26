@@ -36,9 +36,34 @@ Not implemented or not yet established:
 - A declared minimum Linux kernel, `liburing`, or GCC version.
 - Reproducible performance baselines or performance claims.
 
-See [IO_SEMANTICS.md](IO_SEMANTICS.md),
-[LIFETIME_SEMANTICS.md](LIFETIME_SEMANTICS.md), and
-[OPERATION_LIFECYCLE.md](OPERATION_LIFECYCLE.md) for the normative contracts.
+## Documentation map
+
+Read only as far as your goal requires:
+
+| Document | Read it when you need to understand |
+| --- | --- |
+| This README | Status, build commands, limitations, and the public entry point |
+| [IO_SEMANTICS.md](IO_SEMANTICS.md) | Partial transfers, EOF, socket flags, errors, and close behavior |
+| [LIFETIME_SEMANTICS.md](LIFETIME_SEMANTICS.md) | Who owns executors, tasks, buffers, descriptors, and shutdown work |
+| [OPERATION_LIFECYCLE.md](OPERATION_LIFECYCLE.md) | How one SQE moves from preparation through CQE consumption and resumption |
+| [DESIGN_CPP23.md](DESIGN_CPP23.md) | How the implemented modules fit together |
+| [design_decisions.md](design_decisions.md) | Why the current architectural boundaries were chosen |
+| [ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md) | Completed work, open work, deferrals, and the definition of norm-setting |
+
+The semantic and lifecycle documents are normative: code and examples should
+match them. The design documents explain the implementation. The checklist is
+the roadmap; unchecked entries are not capabilities.
+
+Terminology used throughout:
+
+- **operation** means one prepared asynchronous kernel request and its stable
+  `OperationState`;
+- **task** means a C++ coroutine represented by `Task<T>`;
+- **root task** means a task owned directly by the executor through `spawn()`;
+- **owner thread** means the thread that created the executor;
+- **shutdown** means the executor-wide cancellation and drain sequence;
+- **close** means releasing descriptor ownership, which may defer the numeric
+  descriptor close until in-flight operations finish.
 
 ## Requirements
 

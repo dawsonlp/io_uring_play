@@ -1,5 +1,10 @@
 # Architectural Code Quality Checklist
 
+> [Overview](README.md) · [I/O semantics](IO_SEMANTICS.md) ·
+> [Lifetime semantics](LIFETIME_SEMANTICS.md) ·
+> [Operation lifecycle](OPERATION_LIFECYCLE.md) · [Design](DESIGN_CPP23.md) ·
+> **Roadmap**
+
 **Project:** `io_uring_async_cpp23`  
 **Purpose:** Evolve the C++23 example from a functional teaching prototype into a
 correct, coherent, and credible reference architecture for coroutine-based

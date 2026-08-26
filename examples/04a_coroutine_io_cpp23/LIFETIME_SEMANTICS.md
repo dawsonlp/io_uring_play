@@ -1,5 +1,10 @@
 # Lifetime and Cancellation Semantics
 
+> [Overview](README.md) · [I/O semantics](IO_SEMANTICS.md) ·
+> **Lifetime semantics** · [Operation lifecycle](OPERATION_LIFECYCLE.md) ·
+> [Design](DESIGN_CPP23.md) ·
+> [Roadmap](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+
 This document defines the ownership rules for executor, task, operation, buffer,
 and descriptor lifetimes. It distinguishes graceful cancellation from the abrupt
 ring-release fallback.

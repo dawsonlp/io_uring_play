@@ -1,5 +1,10 @@
 # io_uring_async - C++20 Coroutine-Based io_uring Library
 
+> **Earlier experimental implementation:** This example predates the lifecycle,
+> shutdown, and test guarantees developed in `04a_coroutine_io_cpp23`. Feature and
+> performance statements below have not been revalidated and must not be assumed
+> to apply to the C++23 runtime.
+
 A modern, educational async I/O library for Linux that combines C++20 coroutines with io_uring.
 
 ## Features

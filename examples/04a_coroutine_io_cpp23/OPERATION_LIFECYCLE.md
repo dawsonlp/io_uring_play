@@ -1,5 +1,10 @@
 # Operation Lifecycle
 
+> [Overview](README.md) · [I/O semantics](IO_SEMANTICS.md) ·
+> [Lifetime semantics](LIFETIME_SEMANTICS.md) · **Operation lifecycle** ·
+> [Design](DESIGN_CPP23.md) ·
+> [Roadmap](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+
 This document defines the implemented ownership and state-transition contract for
 one asynchronous io_uring operation. It is normative for the C++23 runtime.
 
