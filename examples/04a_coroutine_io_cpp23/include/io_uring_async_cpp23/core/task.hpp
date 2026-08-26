@@ -280,6 +280,14 @@ public:
     [[nodiscard]] bool valid() const noexcept {
         return coro_ != nullptr;
     }
+
+    /**
+     * @brief Resume a root task scheduled by an executor
+     */
+    void resume() {
+        assert(coro_ && !coro_.done() && "Cannot resume an empty or completed task");
+        coro_.resume();
+    }
     
     /**
      * @brief Awaitable interface: check if result is ready

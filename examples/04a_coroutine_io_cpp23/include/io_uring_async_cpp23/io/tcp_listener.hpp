@@ -95,6 +95,17 @@ public:
             ::close(fd);
             return std::unexpected(Error::from_errno(err));
         }
+
+        if (port == 0) {
+            socklen_t addr_length = sizeof(addr);
+            if (::getsockname(fd, reinterpret_cast<sockaddr*>(&addr),
+                              &addr_length) < 0) {
+                int err = errno;
+                ::close(fd);
+                return std::unexpected(Error::from_errno(err));
+            }
+            port = ntohs(addr.sin_port);
+        }
         
         return TcpListener(executor, fd, port);
     }

@@ -16,26 +16,32 @@ namespace io_uring_async_cpp23 {
 // ============================================================================
 
 template<typename T>
-void IoUringAwaitable<T>::await_suspend(std::coroutine_handle<> awaiter) {
-    operation_id_ = executor_->allocate_operation_id();
-    
-    if (!submit_operation()) {
-        // If submission fails, resume immediately with an error
-        raw_result_ = -ENOMEM;
-        awaiter.resume();
-        return;
+bool IoUringAwaitable<T>::await_suspend(std::coroutine_handle<> awaiter) {
+    operation_state_ = executor_->create_operation(awaiter);
+
+    auto preparation = submit_operation();
+    if (!preparation) {
+        preparation_error_ = std::move(preparation.error());
+        executor_->discard_operation(operation_state_);
+        operation_state_ = nullptr;
+        return false;
     }
-    
-    // Register with executor so we get resumed on completion
-    executor_->register_operation(operation_id_, awaiter);
+
+    executor_->mark_operation_pending(operation_state_);
+    return true;
 }
 
 template<typename T>
 std::expected<T, Error> IoUringAwaitable<T>::await_resume() {
-    // Get the result that the executor stored for us
-    int res = executor_->get_operation_result(operation_id_);
-    executor_->clear_operation_result(operation_id_);
-    return process_result(res);
+    if (preparation_error_) {
+        return std::unexpected(std::move(*preparation_error_));
+    }
+
+    auto result = executor_->take_operation_result(operation_state_);
+    if (!result) {
+        return std::unexpected(std::move(result.error()));
+    }
+    return process_result(result.value());
 }
 
 // Explicit template instantiations for the types we use
@@ -47,10 +53,9 @@ template class IoUringAwaitable<void>;
 // ReadAwaitable
 // ============================================================================
 
-bool ReadAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_read(
-        fd_, buffer_, offset_, operation_id_);
-    return result.has_value();
+std::expected<void, Error> ReadAwaitable::submit_operation() {
+    return executor_->ring().prep_read(
+        fd_, buffer_, offset_, operation_state_);
 }
 
 std::expected<size_t, Error> ReadAwaitable::process_result(int res) {
@@ -64,10 +69,9 @@ std::expected<size_t, Error> ReadAwaitable::process_result(int res) {
 // WriteAwaitable
 // ============================================================================
 
-bool WriteAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_write(
-        fd_, buffer_, offset_, operation_id_);
-    return result.has_value();
+std::expected<void, Error> WriteAwaitable::submit_operation() {
+    return executor_->ring().prep_write(
+        fd_, buffer_, offset_, operation_state_);
 }
 
 std::expected<size_t, Error> WriteAwaitable::process_result(int res) {
@@ -81,13 +85,12 @@ std::expected<size_t, Error> WriteAwaitable::process_result(int res) {
 // AcceptAwaitable
 // ============================================================================
 
-bool AcceptAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_accept(
+std::expected<void, Error> AcceptAwaitable::submit_operation() {
+    return executor_->ring().prep_accept(
         fd_, 
         reinterpret_cast<sockaddr*>(&addr_), 
         &addrlen_,
-        operation_id_);
-    return result.has_value();
+        operation_state_);
 }
 
 std::expected<int, Error> AcceptAwaitable::process_result(int res) {
@@ -101,10 +104,9 @@ std::expected<int, Error> AcceptAwaitable::process_result(int res) {
 // SendAwaitable
 // ============================================================================
 
-bool SendAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_send(
-        fd_, buffer_, operation_id_);
-    return result.has_value();
+std::expected<void, Error> SendAwaitable::submit_operation() {
+    return executor_->ring().prep_send(
+        fd_, buffer_, flags_, operation_state_);
 }
 
 std::expected<size_t, Error> SendAwaitable::process_result(int res) {
@@ -118,10 +120,9 @@ std::expected<size_t, Error> SendAwaitable::process_result(int res) {
 // RecvAwaitable
 // ============================================================================
 
-bool RecvAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_recv(
-        fd_, buffer_, operation_id_);
-    return result.has_value();
+std::expected<void, Error> RecvAwaitable::submit_operation() {
+    return executor_->ring().prep_recv(
+        fd_, buffer_, flags_, operation_state_);
 }
 
 std::expected<size_t, Error> RecvAwaitable::process_result(int res) {
@@ -135,9 +136,8 @@ std::expected<size_t, Error> RecvAwaitable::process_result(int res) {
 // CloseAwaitable
 // ============================================================================
 
-bool CloseAwaitable::submit_operation() {
-    auto result = executor_->ring().prep_close(fd_, operation_id_);
-    return result.has_value();
+std::expected<void, Error> CloseAwaitable::submit_operation() {
+    return executor_->ring().prep_close(fd_, operation_state_);
 }
 
 std::expected<void, Error> CloseAwaitable::process_result(int res) {

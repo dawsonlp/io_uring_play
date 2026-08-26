@@ -15,9 +15,11 @@
 
 #include "../core/error.hpp"
 #include "../core/io_uring_wrapper.hpp"
+#include "operation_state.hpp"
 #include <coroutine>
 #include <cstddef>
 #include <expected>
+#include <optional>
 #include <span>
 
 namespace io_uring_async_cpp23 {
@@ -43,8 +45,7 @@ public:
      */
     explicit IoUringAwaitable(IoUringExecutor& executor) noexcept
         : executor_(&executor)
-        , operation_id_(0)
-        , raw_result_(0) {}
+        , operation_state_(nullptr) {}
 
     virtual ~IoUringAwaitable() = default;
 
@@ -60,7 +61,7 @@ public:
      * 
      * @param awaiter The coroutine handle of the waiting coroutine
      */
-    void await_suspend(std::coroutine_handle<> awaiter);
+    bool await_suspend(std::coroutine_handle<> awaiter);
     
     /**
      * @brief Called when coroutine resumes - returns the operation result
@@ -71,8 +72,8 @@ public:
     
 protected:
     IoUringExecutor* executor_;  ///< Executor managing this operation
-    uint64_t operation_id_;      ///< Unique ID for this operation
-    int raw_result_;             ///< Raw io_uring result
+    OperationState* operation_state_; ///< Stable state owned by the executor
+    std::optional<Error> preparation_error_;
     
     /**
      * @brief Submit the actual I/O operation to io_uring
@@ -80,9 +81,9 @@ protected:
      * Must be implemented by derived classes to prepare the specific
      * operation type (read, write, accept, etc.)
      * 
-     * @return true if operation was submitted, false if queue full
+     * @return Success or the exact SQE-preparation error
      */
-    virtual bool submit_operation() = 0;
+    virtual std::expected<void, Error> submit_operation() = 0;
     
     /**
      * @brief Convert raw io_uring result to typed result
@@ -109,7 +110,7 @@ public:
         , offset_(offset) {}
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
@@ -131,7 +132,7 @@ public:
         , offset_(offset) {}
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
@@ -160,7 +161,7 @@ public:
     [[nodiscard]] socklen_t addr_len() const noexcept { return addrlen_; }
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<int, Error> process_result(int res) override;
     
 private:
@@ -182,7 +183,7 @@ public:
         , flags_(flags) {}
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
@@ -204,7 +205,7 @@ public:
         , flags_(flags) {}
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
@@ -223,7 +224,7 @@ public:
         , fd_(fd) {}
     
 protected:
-    bool submit_operation() override;
+    std::expected<void, Error> submit_operation() override;
     std::expected<void, Error> process_result(int res) override;
     
 private:

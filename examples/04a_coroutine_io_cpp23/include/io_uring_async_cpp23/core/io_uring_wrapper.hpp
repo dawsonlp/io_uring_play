@@ -85,7 +85,7 @@ public:
     [[nodiscard]] std::expected<io_uring_sqe*, Error> get_sqe() noexcept {
         io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
         if (!sqe) {
-            return std::unexpected(Error(Error::Code::OutOfMemory, 
+            return std::unexpected(Error(Error::Code::QueueFull,
                 "Failed to get SQE - submission queue full"));
         }
         return sqe;
@@ -168,7 +168,7 @@ public:
         int fd, 
         std::span<std::byte> buffer,
         uint64_t offset,
-        uint64_t user_data) noexcept 
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -177,8 +177,7 @@ public:
         
         io_uring_prep_read(sqe_result.value(), fd, 
             buffer.data(), buffer.size(), offset);
-        io_uring_sqe_set_data(sqe_result.value(), 
-            reinterpret_cast<void*>(user_data));
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }
@@ -196,7 +195,7 @@ public:
         int fd,
         std::span<const std::byte> buffer,
         uint64_t offset,
-        uint64_t user_data) noexcept 
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -205,8 +204,7 @@ public:
         
         io_uring_prep_write(sqe_result.value(), fd,
             buffer.data(), buffer.size(), offset);
-        io_uring_sqe_set_data(sqe_result.value(),
-            reinterpret_cast<void*>(user_data));
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }
@@ -224,7 +222,7 @@ public:
         int fd,
         sockaddr* addr,
         socklen_t* addrlen,
-        uint64_t user_data) noexcept 
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -232,8 +230,7 @@ public:
         }
         
         io_uring_prep_accept(sqe_result.value(), fd, addr, addrlen, 0);
-        io_uring_sqe_set_data(sqe_result.value(),
-            reinterpret_cast<void*>(user_data));
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }
@@ -249,7 +246,8 @@ public:
     [[nodiscard]] std::expected<void, Error> prep_recv(
         int fd,
         std::span<std::byte> buffer,
-        uint64_t user_data) noexcept 
+        int flags,
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -257,9 +255,8 @@ public:
         }
         
         io_uring_prep_recv(sqe_result.value(), fd,
-            buffer.data(), buffer.size(), 0);
-        io_uring_sqe_set_data(sqe_result.value(),
-            reinterpret_cast<void*>(user_data));
+            buffer.data(), buffer.size(), flags);
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }
@@ -275,7 +272,8 @@ public:
     [[nodiscard]] std::expected<void, Error> prep_send(
         int fd,
         std::span<const std::byte> buffer,
-        uint64_t user_data) noexcept 
+        int flags,
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -283,9 +281,8 @@ public:
         }
         
         io_uring_prep_send(sqe_result.value(), fd,
-            buffer.data(), buffer.size(), 0);
-        io_uring_sqe_set_data(sqe_result.value(),
-            reinterpret_cast<void*>(user_data));
+            buffer.data(), buffer.size(), flags);
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }
@@ -299,7 +296,7 @@ public:
      */
     [[nodiscard]] std::expected<void, Error> prep_close(
         int fd,
-        uint64_t user_data) noexcept 
+        void* user_data) noexcept
     {
         auto sqe_result = get_sqe();
         if (!sqe_result) {
@@ -307,8 +304,7 @@ public:
         }
         
         io_uring_prep_close(sqe_result.value(), fd);
-        io_uring_sqe_set_data(sqe_result.value(),
-            reinterpret_cast<void*>(user_data));
+        io_uring_sqe_set_data(sqe_result.value(), user_data);
         
         return {};
     }

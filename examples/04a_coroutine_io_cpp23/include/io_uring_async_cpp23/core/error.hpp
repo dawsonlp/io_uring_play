@@ -32,6 +32,7 @@ public:
         Timeout,
         InvalidArgument,
         OutOfMemory,
+        QueueFull,
         PermissionDenied,
         NotFound,
         AlreadyExists,
@@ -129,6 +130,7 @@ private:
             case Code::Timeout: return "Timeout";
             case Code::InvalidArgument: return "Invalid Argument";
             case Code::OutOfMemory: return "Out of Memory";
+            case Code::QueueFull: return "Submission Queue Full";
             case Code::PermissionDenied: return "Permission Denied";
             case Code::NotFound: return "Not Found";
             case Code::AlreadyExists: return "Already Exists";

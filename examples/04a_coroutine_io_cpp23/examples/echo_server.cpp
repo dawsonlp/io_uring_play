@@ -19,6 +19,8 @@
 #include <io_uring_async_cpp23/io_uring_async_cpp23.hpp>
 #include <print>
 #include <array>
+#include <cstdlib>
+#include <optional>
 
 using namespace io_uring_async_cpp23;
 
@@ -53,9 +55,11 @@ Task<void> handle_client(TcpStream client) {
 /**
  * @brief Main server coroutine - accepts connections and spawns handlers
  */
-Task<void> server(IoUringExecutor& executor) {
-    auto listener = TcpListener::bind(executor, 8080);
+Task<void> server(IoUringExecutor& executor, uint16_t port,
+                  std::optional<Error>& startup_error) {
+    auto listener = TcpListener::bind(executor, port);
     if (!listener) {
+        startup_error = listener.error();
         std::print(stderr, "Failed to bind: {}\n", 
             listener.error().description());
         co_return;
@@ -83,7 +87,17 @@ Task<void> server(IoUringExecutor& executor) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    uint16_t port = 8080;
+    if (argc > 1) {
+        const auto parsed_port = std::strtoul(argv[1], nullptr, 10);
+        if (parsed_port == 0 || parsed_port > 65535) {
+            std::print(stderr, "Invalid port: {}\n", argv[1]);
+            return 2;
+        }
+        port = static_cast<uint16_t>(parsed_port);
+    }
+
     std::print("io_uring_async_cpp23 v{}.{}.{} (C++{})\n",
         VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, CPP_STANDARD);
     
@@ -94,12 +108,16 @@ int main() {
         return 1;
     }
     
-    executor->spawn(server(*executor));
+    std::optional<Error> startup_error;
+    executor->spawn(server(*executor, port, startup_error));
     
     auto result = executor->run();
     if (!result) {
         std::print(stderr, "Executor error: {}\n",
             result.error().description());
+        return 1;
+    }
+    if (startup_error) {
         return 1;
     }
     
