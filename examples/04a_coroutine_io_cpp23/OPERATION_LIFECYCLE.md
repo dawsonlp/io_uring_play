@@ -91,9 +91,15 @@ completion/cancellation race.
 ## Destruction
 
 An operation state may be destroyed only after its terminal CQE has been consumed
-and resumption bookkeeping is complete. Executor shutdown stops new work, requests
-cancellation, drains terminal CQEs, resumes or resolves affected tasks, destroys
-operation states and coroutine frames, and only then tears down the ring.
+and resumption bookkeeping is complete. The exception is abrupt executor teardown:
+the executor first closes the ring and waits for the kernel release path, then
+destroys operation states and coroutine frames. This emergency path guarantees
+resource lifetime safety but does not resume suspended coroutines.
+
+Graceful executor shutdown will stop new work, request cancellation, drain terminal
+CQEs, resume or resolve affected tasks, destroy operation states and coroutine
+frames, and only then tear down the ring. That graceful path is not yet implemented;
+its full contract is specified in `LIFETIME_SEMANTICS.md`.
 
 ## Threading Contract
 

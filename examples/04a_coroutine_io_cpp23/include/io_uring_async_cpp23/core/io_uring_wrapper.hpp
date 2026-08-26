@@ -49,9 +49,21 @@ public:
      * @brief Destructor - automatically tears down io_uring
      */
     ~IoUring() {
+        close();
+    }
+
+    /**
+     * @brief Tear down the ring and wait for the kernel release path
+     */
+    void close() noexcept {
         if (initialized_) {
             io_uring_queue_exit(&ring_);
+            initialized_ = false;
         }
+    }
+
+    [[nodiscard]] bool is_open() const noexcept {
+        return initialized_;
     }
     
     // Move-only semantics

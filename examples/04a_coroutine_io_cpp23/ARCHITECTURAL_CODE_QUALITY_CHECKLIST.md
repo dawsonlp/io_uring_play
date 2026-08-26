@@ -26,7 +26,7 @@ These invariants govern every phase:
       valid for the full lifetime required by the kernel.
 - [ ] Every submitted operation reaches exactly one terminal state: completed,
       cancelled, or drained during shutdown.
-- [ ] Executor destruction never leaves a coroutine or kernel operation referring
+- [x] Executor destruction never leaves a coroutine or kernel operation referring
       to destroyed state.
 - [x] Queue saturation and submission failures preserve their original error.
 - [x] Root-task failures are observable by the caller.
@@ -144,17 +144,18 @@ boundary, and leaves no suspended or leaked work.
 
 **Goal:** Make destruction and shutdown safe under in-flight I/O.
 
-**Status:** Deferred to a future development cycle, after Phases 1 and 2 establish
-stable operation ownership and truthful error propagation.
+**Status:** In progress. Phases 1 and 2 established stable operation ownership and
+truthful error propagation; abrupt teardown safety is now implemented, while
+graceful cancellation and structured shutdown remain.
 
-- [ ] Define cancellation semantics for:
-  - [ ] individual operations
-  - [ ] a task and its child operations
-  - [ ] a connection
-  - [ ] the entire executor
+- [x] Define cancellation semantics for:
+  - [x] individual operations
+  - [x] a task and its child operations
+  - [x] a connection
+  - [x] the entire executor
 - [ ] Implement cancellation using `IORING_OP_ASYNC_CANCEL` where supported.
 - [ ] Handle completion/cancellation races without double resume or double free.
-- [ ] Decide and document whether cancellation is best-effort or completion-guaranteed.
+- [x] Decide and document whether cancellation is best-effort or completion-guaranteed.
 - [ ] Prevent `TcpStream` and `TcpListener` from synchronously closing a descriptor
       while an operation still references it.
 - [ ] Protect against descriptor reuse causing a late operation to affect a new
@@ -163,7 +164,7 @@ stable operation ownership and truthful error propagation.
       request cancellation, drain CQEs, destroy operation states, then destroy the
       ring and coroutine frames.
 - [ ] Add a wake mechanism so shutdown can interrupt a pending accept or wait.
-- [ ] Define buffer ownership requirements for every async API.
+- [x] Define buffer ownership requirements for every async API.
 - [ ] Ensure non-owning spans cannot outlive their backing storage while submitted.
 - [ ] Add structured task ownership so parent/child shutdown is deterministic.
 
@@ -175,7 +176,7 @@ stable operation ownership and truthful error propagation.
 - [ ] Cancellation wins a completion race.
 - [ ] Close a stream with pending send and receive operations.
 - [ ] Shut down with a pending accept.
-- [ ] Destroy an executor with pending operations.
+- [x] Destroy an executor with pending operations.
 - [ ] Reuse the numeric value of a recently closed descriptor.
 - [ ] Run cancellation and shutdown tests repeatedly under ASan and UBSan.
 

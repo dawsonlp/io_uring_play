@@ -51,6 +51,19 @@ namespace io_uring_async_cpp23 {
  */
 class IoUringExecutor {
 public:
+    ~IoUringExecutor() {
+        assert_owner_thread();
+
+        // The kernel release path must finish before operation-state pointers,
+        // coroutine frames, descriptors, or buffers can be destroyed.
+        ring_.close();
+        while (!ready_queue_.empty()) {
+            ready_queue_.pop();
+        }
+        operations_.clear();
+        active_tasks_.clear();
+    }
+
     /**
      * @brief Create an executor with the specified queue depth
      * 
