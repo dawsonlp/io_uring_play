@@ -44,6 +44,12 @@ public:
         
         return IoUring(ring);
     }
+
+#ifdef IO_URING_ASYNC_TESTING
+    [[nodiscard]] static IoUring testing_stub() noexcept {
+        return IoUring();
+    }
+#endif
     
     /**
      * @brief Destructor - automatically tears down io_uring
@@ -90,6 +96,8 @@ public:
     }
     
 private:
+    IoUring() noexcept = default;
+
     /**
      * @brief Get a submission queue entry for preparing an operation
      * 
@@ -295,7 +303,7 @@ private:
     explicit IoUring(io_uring ring) noexcept 
         : ring_(ring), initialized_(true) {}
     
-    io_uring ring_;
+    io_uring ring_{};
     bool initialized_ = false;
 };
 

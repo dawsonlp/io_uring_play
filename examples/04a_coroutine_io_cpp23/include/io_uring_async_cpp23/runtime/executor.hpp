@@ -57,7 +57,10 @@ public:
 
 #ifdef IO_URING_ASYNC_TESTING
     // Deterministic fault/completion seams used by the architecture tests.
+    [[nodiscard]] static std::expected<std::unique_ptr<IoUringExecutor>, Error>
+    create_for_testing() noexcept;
     void test_fail_next_submit(Error error);
+    [[nodiscard]] std::expected<void, Error> test_submit_operations();
     [[nodiscard]] std::expected<void, Error> test_process_completion(
         io_uring_cqe* cqe);
     [[nodiscard]] CancellationState* test_create_cancellation(

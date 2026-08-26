@@ -261,24 +261,28 @@ no loss of clarity about submission, suspension, ownership, or completion.
 **Goal:** Make regressions in coroutine and kernel-facing behavior difficult to
 introduce unnoticed.
 
-- [ ] Replace the hand-written `TEST`/`PASS` counting macros or ensure failures do
+**Status:** Complete for the current supported host. Minimum-kernel CI is
+deferred until Phase 7 establishes the supported kernel and liburing baseline.
+
+- [x] Replace the hand-written `TEST`/`PASS` counting macros or ensure failures do
       not depend solely on `assert`.
-- [ ] Separate kernel-independent unit tests from host-kernel integration tests.
-- [ ] Report a clear skip when `io_uring` is blocked by seccomp or unavailable,
+- [x] Separate kernel-independent unit tests from host-kernel integration tests.
+- [x] Report a clear skip when `io_uring` is blocked by seccomp or unavailable,
       while still failing genuine library regressions.
-- [ ] Add deterministic test seams for submission and completion without requiring
+- [x] Add deterministic test seams for submission and completion without requiring
       every edge case from the live kernel.
-- [ ] Add integration tests for read, write, accept, send, receive, close, partial
+- [x] Add integration tests for read, write, accept, send, receive, close, partial
       I/O, cancellation, and shutdown.
-- [ ] Add stress tests with many concurrent operations and randomized completion
+- [x] Add stress tests with many concurrent operations and randomized completion
       order.
-- [ ] Add compile-time API checks for move-only ownership and invalid operations.
-- [ ] Add leak detection for coroutine frames, operation states, sockets, and ring
+- [x] Add compile-time API checks for move-only ownership and invalid operations.
+- [x] Add leak detection for coroutine frames, operation states, sockets, and ring
       resources.
-- [ ] Add ThreadSanitizer only if cross-thread submission or execution becomes a
-      supported feature.
+- [x] Add ThreadSanitizer only if cross-thread submission or execution becomes a
+      supported feature. Not applicable while execution remains owner-thread
+      confined; the supported cross-thread stop request has integration coverage.
 - [ ] Run tests on the minimum supported kernel as well as the current development
-      kernel.
+      kernel. **Deferred to Phase 7:** the minimum version is not yet defined.
 
 **Exit criteria:** Tests exercise documented invariants and failure paths rather
 than merely proving that headers compile and happy paths work.

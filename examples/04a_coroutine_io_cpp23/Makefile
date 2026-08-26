@@ -7,6 +7,8 @@ STRESS_RUNS ?= 25
 BASE_CXXFLAGS := -std=c++23 -Wall -Wextra -Wpedantic -fcoroutines -MMD -MP
 INCLUDES := -I./include -I./tests
 BASE_LDFLAGS := -luring
+TEST_CHECK_FLAGS := -include ./tests/support/check.hpp
+INTEGRATION_CHECK_FLAGS := $(TEST_CHECK_FLAGS) -include ./tests/support/kernel_gate.hpp
 
 ifeq ($(MODE),release)
 MODE_CXXFLAGS := -O3 -DNDEBUG
@@ -15,6 +17,7 @@ MODE_CXXFLAGS := -g -O0 -DDEBUG_MODE
 else ifeq ($(MODE),asan)
 MODE_CXXFLAGS := -g -O1 -fsanitize=address -fno-omit-frame-pointer
 MODE_LDFLAGS := -fsanitize=address
+TEST_ENV := ASAN_OPTIONS=detect_leaks=1:halt_on_error=1
 else ifeq ($(MODE),ubsan)
 MODE_CXXFLAGS := -g -O1 -fsanitize=undefined -fno-omit-frame-pointer
 MODE_LDFLAGS := -fsanitize=undefined
@@ -43,7 +46,7 @@ DEPS := $(LIB_OBJS:.o=.d) $(UNIT_BINS:=.d) $(INTEGRATION_BINS:=.d) $(EXAMPLE_BIN
 
 -include $(DEPS)
 
-.PHONY: all release debug asan ubsan build examples test-build test unit-test integration-test shutdown-stress matrix clean help
+.PHONY: all release debug asan ubsan build examples test-build test unit-test integration-test shutdown-stress routing-stress stress matrix clean help
 
 all: release
 
@@ -74,25 +77,45 @@ test-build: $(UNIT_BINS) $(INTEGRATION_BINS)
 
 $(TEST_BIN_DIR)/unit/%: tests/unit/%.cpp $(LIB_OBJS) | $(TEST_BIN_DIR)/unit
 	@echo "Building unit test: $@"
-	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(TEST_CHECK_FLAGS) $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -o $@
 
 $(TEST_BIN_DIR)/integration/%: tests/integration/%.cpp $(LIB_OBJS) | $(TEST_BIN_DIR)/integration
 	@echo "Building integration test: $@"
-	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -pthread -o $@
+	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(INTEGRATION_CHECK_FLAGS) $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -pthread -o $@
 
 unit-test: $(UNIT_BINS)
-	@set -e; for test in $(UNIT_BINS); do echo "Running $$test"; $$test; done
+	@failures=0; for test in $(UNIT_BINS); do \
+		echo "Running $$test"; $(TEST_ENV) $$test; status=$$?; \
+		if [ $$status -ne 0 ]; then echo "FAIL: $$test (status $$status)"; \
+			failures=$$((failures + 1)); fi; \
+	done; test $$failures -eq 0
 
 integration-test: $(INTEGRATION_BINS)
-	@set -e; for test in $(INTEGRATION_BINS); do echo "Running $$test"; $$test; done
+	@failures=0; skips=0; for test in $(INTEGRATION_BINS); do \
+		echo "Running $$test"; $(TEST_ENV) $$test; status=$$?; \
+		if [ $$status -eq 77 ]; then echo "SKIPPED: $$test"; \
+			skips=$$((skips + 1)); \
+		elif [ $$status -ne 0 ]; then echo "FAIL: $$test (status $$status)"; \
+			failures=$$((failures + 1)); fi; \
+	done; echo "Integration summary: $$skips skipped, $$failures failed"; \
+	test $$failures -eq 0
 
 shutdown-stress: $(TEST_BIN_DIR)/integration/test_graceful_shutdown $(TEST_BIN_DIR)/integration/test_descriptor_lifetime
 	@set -e; run=1; while [ $$run -le $(STRESS_RUNS) ]; do \
-		$(TEST_BIN_DIR)/integration/test_graceful_shutdown; \
-		$(TEST_BIN_DIR)/integration/test_descriptor_lifetime; \
+		$(TEST_ENV) $(TEST_BIN_DIR)/integration/test_graceful_shutdown; \
+		$(TEST_ENV) $(TEST_BIN_DIR)/integration/test_descriptor_lifetime; \
 		run=$$((run + 1)); \
 	done
 	@echo "✓ C++23 $(MODE) shutdown stress passed ($(STRESS_RUNS) runs)"
+
+routing-stress: $(TEST_BIN_DIR)/integration/test_operation_routing
+	@set -e; run=1; while [ $$run -le $(STRESS_RUNS) ]; do \
+		$(TEST_ENV) TEST_SEED=$$run $(TEST_BIN_DIR)/integration/test_operation_routing; \
+		run=$$((run + 1)); \
+	done
+	@echo "✓ C++23 $(MODE) randomized routing stress passed ($(STRESS_RUNS) seeds)"
+
+stress: shutdown-stress routing-stress
 
 test: examples unit-test integration-test
 	@echo "✓ C++23 $(MODE) tests passed"
@@ -119,7 +142,7 @@ compare:
 	@echo "C++23 headers: $$(find include -name '*.hpp' | xargs wc -l | tail -1)"
 
 help:
-	@echo "Targets: release debug asan ubsan test unit-test integration-test shutdown-stress matrix clean"
+	@echo "Targets: release debug asan ubsan test unit-test integration-test stress matrix clean"
 	@echo "Artifacts are isolated under build/<mode>/"
 
 format:

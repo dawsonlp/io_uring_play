@@ -441,6 +441,26 @@ void IoUringExecutor::test_fail_next_submit(Error error) {
     next_submit_error_ = std::move(error);
 }
 
+std::expected<std::unique_ptr<IoUringExecutor>, Error>
+IoUringExecutor::create_for_testing() noexcept {
+    const int wake_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (wake_fd < 0) {
+        return std::unexpected(Error::from_errno(errno));
+    }
+    auto executor = std::unique_ptr<IoUringExecutor>(
+        new (std::nothrow) IoUringExecutor(IoUring::testing_stub(), wake_fd));
+    if (!executor) {
+        ::close(wake_fd);
+        return std::unexpected(
+            Error(Error::Code::OutOfMemory, "Failed to allocate test executor"));
+    }
+    return executor;
+}
+
+std::expected<void, Error> IoUringExecutor::test_submit_operations() {
+    return submit_or_fail_operations();
+}
+
 std::expected<void, Error> IoUringExecutor::test_process_completion(
     io_uring_cqe* cqe) {
     return process_completion(cqe);

@@ -1,8 +1,12 @@
 #include <io_uring_async_cpp23/io_uring_async_cpp23.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <cstdlib>
+#include <numeric>
+#include <random>
 #include <thread>
 
 #include <sys/socket.h>
@@ -21,12 +25,12 @@ Task<void> receive_marker(IoUringExecutor& executor, int fd,
 }
 
 int main() {
-    constexpr std::size_t operation_count = 32;
+    constexpr std::size_t operation_count = 128;
     std::array<std::array<int, 2>, operation_count> sockets{};
     std::array<bool, operation_count> matched{};
     std::array<unsigned, operation_count> resume_counts{};
 
-    auto executor = IoUringExecutor::create(64);
+    auto executor = IoUringExecutor::create(256);
     assert(executor.has_value());
     auto& runtime = **executor;
 
@@ -37,8 +41,17 @@ int main() {
             matched[index], resume_counts[index]));
     }
 
+    unsigned seed = 0x5eedU;
+    if (const char* configured_seed = std::getenv("TEST_SEED")) {
+        seed = static_cast<unsigned>(std::strtoul(configured_seed, nullptr, 10));
+    }
+    std::array<std::size_t, operation_count> completion_order{};
+    std::iota(completion_order.begin(), completion_order.end(), 0);
+    std::mt19937 generator(seed);
+    std::shuffle(completion_order.begin(), completion_order.end(), generator);
+
     std::jthread sender([&] {
-        for (std::size_t index = operation_count; index-- > 0;) {
+        for (const std::size_t index : completion_order) {
             const auto marker = static_cast<std::byte>(index);
             assert(::send(sockets[index][1], &marker, 1, 0) == 1);
             ::close(sockets[index][1]);
