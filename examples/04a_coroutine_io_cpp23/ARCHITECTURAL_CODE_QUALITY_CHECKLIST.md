@@ -230,8 +230,8 @@ need to write correct applications.
 **Goal:** Apply KISS and DRY after correctness has established the right
 abstractions.
 
-**Status:** Items 5.1 through 5.4 are complete. Strict example input parsing
-remains for the next Phase 5 increment.
+**Status:** Complete. Stable submission, completion, and scheduling boundaries
+are consolidated; strict example parsing has direct unit coverage.
 
 - [x] Introduce one private SQE-preparation helper that centralizes:
   - [x] SQE acquisition
@@ -247,7 +247,7 @@ remains for the next Phase 5 increment.
 - [x] Separate executor scheduling policy from ring/completion mechanics if both
       continue to grow. Scheduling remains in the public loop methods; shared
       submission and CQE mechanics now live in focused private helpers.
-- [ ] Use `std::from_chars` for strict, allocation-free example port parsing.
+- [x] Use `std::from_chars` for strict, allocation-free example port parsing.
 - [x] Keep source files focused enough that ownership and suspension behavior can
       be understood without cross-referencing several unrelated modules.
 

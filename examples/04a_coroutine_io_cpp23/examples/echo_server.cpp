@@ -12,14 +12,15 @@
  * - Error / std::expected      - C++23 error handling
  * 
  * Usage:
- *   ./echo_server
+ *   ./echo_server [port]
  *   # In another terminal: echo "hello" | nc localhost 8080
  */
 
 #include <io_uring_async_cpp23/io_uring_async_cpp23.hpp>
+#include "port_parser.hpp"
+
 #include <print>
 #include <array>
-#include <cstdlib>
 #include <optional>
 
 using namespace io_uring_async_cpp23;
@@ -88,14 +89,19 @@ Task<void> server(IoUringExecutor& executor, uint16_t port,
 }
 
 int main(int argc, char* argv[]) {
+    if (argc > 2) {
+        std::print(stderr, "Usage: {} [port]\n", argv[0]);
+        return 2;
+    }
+
     uint16_t port = 8080;
-    if (argc > 1) {
-        const auto parsed_port = std::strtoul(argv[1], nullptr, 10);
-        if (parsed_port == 0 || parsed_port > 65535) {
+    if (argc == 2) {
+        const auto parsed_port = example::parse_port(argv[1]);
+        if (!parsed_port) {
             std::print(stderr, "Invalid port: {}\n", argv[1]);
             return 2;
         }
-        port = static_cast<uint16_t>(parsed_port);
+        port = *parsed_port;
     }
 
     std::print("io_uring_async_cpp23 v{}.{}.{} (C++{})\n",
