@@ -2,6 +2,7 @@
 
 CXX := g++
 MODE ?= release
+STRESS_RUNS ?= 25
 
 BASE_CXXFLAGS := -std=c++23 -Wall -Wextra -Wpedantic -fcoroutines -MMD -MP
 INCLUDES := -I./include -I./tests
@@ -42,7 +43,7 @@ DEPS := $(LIB_OBJS:.o=.d) $(UNIT_BINS:=.d) $(INTEGRATION_BINS:=.d) $(EXAMPLE_BIN
 
 -include $(DEPS)
 
-.PHONY: all release debug asan ubsan build examples test-build test unit-test integration-test matrix clean help
+.PHONY: all release debug asan ubsan build examples test-build test unit-test integration-test shutdown-stress matrix clean help
 
 all: release
 
@@ -85,6 +86,14 @@ unit-test: $(UNIT_BINS)
 integration-test: $(INTEGRATION_BINS)
 	@set -e; for test in $(INTEGRATION_BINS); do echo "Running $$test"; $$test; done
 
+shutdown-stress: $(TEST_BIN_DIR)/integration/test_graceful_shutdown $(TEST_BIN_DIR)/integration/test_descriptor_lifetime
+	@set -e; run=1; while [ $$run -le $(STRESS_RUNS) ]; do \
+		$(TEST_BIN_DIR)/integration/test_graceful_shutdown; \
+		$(TEST_BIN_DIR)/integration/test_descriptor_lifetime; \
+		run=$$((run + 1)); \
+	done
+	@echo "✓ C++23 $(MODE) shutdown stress passed ($(STRESS_RUNS) runs)"
+
 test: examples unit-test integration-test
 	@echo "✓ C++23 $(MODE) tests passed"
 
@@ -110,7 +119,7 @@ compare:
 	@echo "C++23 headers: $$(find include -name '*.hpp' | xargs wc -l | tail -1)"
 
 help:
-	@echo "Targets: release debug asan ubsan test unit-test integration-test matrix clean"
+	@echo "Targets: release debug asan ubsan test unit-test integration-test shutdown-stress matrix clean"
 	@echo "Artifacts are isolated under build/<mode>/"
 
 format:

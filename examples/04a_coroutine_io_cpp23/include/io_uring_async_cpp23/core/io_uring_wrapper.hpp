@@ -320,6 +320,23 @@ public:
         
         return {};
     }
+
+    /**
+     * @brief Prepare cancellation of an operation identified by its user data
+     */
+    [[nodiscard]] std::expected<void, Error> prep_cancel(
+        void* target_user_data,
+        void* cancel_user_data) noexcept
+    {
+        auto sqe_result = get_sqe();
+        if (!sqe_result) {
+            return std::unexpected(sqe_result.error());
+        }
+
+        io_uring_prep_cancel(sqe_result.value(), target_user_data, 0);
+        io_uring_sqe_set_data(sqe_result.value(), cancel_user_data);
+        return {};
+    }
     
 private:
     /**

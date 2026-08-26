@@ -99,7 +99,7 @@ public:
         if (self.result_.index() != 1) {
             throw std::logic_error("Task result requested before completion");
         }
-        return std::forward<Self>(self).result_.template get<1>();
+        return std::get<1>(std::forward<Self>(self).result_);
     }
     
     /**

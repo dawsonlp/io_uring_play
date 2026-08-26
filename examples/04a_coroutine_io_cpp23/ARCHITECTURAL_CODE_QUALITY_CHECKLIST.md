@@ -20,11 +20,11 @@ UndefinedBehaviorSanitizer builds.
 These invariants govern every phase:
 
 - [x] Every submitted SQE has exactly one stable operation-state object.
-- [ ] An operation state remains alive until its CQE is consumed or cancellation
+- [x] An operation state remains alive until its CQE is consumed or cancellation
       is conclusively resolved.
 - [ ] Buffers, socket addresses, file descriptors, and coroutine handles remain
       valid for the full lifetime required by the kernel.
-- [ ] Every submitted operation reaches exactly one terminal state: completed,
+- [x] Every submitted operation reaches exactly one terminal state: completed,
       cancelled, or drained during shutdown.
 - [x] Executor destruction never leaves a coroutine or kernel operation referring
       to destroyed state.
@@ -144,41 +144,41 @@ boundary, and leaves no suspended or leaked work.
 
 **Goal:** Make destruction and shutdown safe under in-flight I/O.
 
-**Status:** In progress. Phases 1 and 2 established stable operation ownership and
-truthful error propagation; abrupt teardown safety is now implemented, while
-graceful cancellation and structured shutdown remain.
+**Status:** Complete for the documented non-owning-buffer API. Mechanical buffer
+lifetime enforcement is explicitly deferred to an owning/pinned-buffer API cycle.
 
 - [x] Define cancellation semantics for:
   - [x] individual operations
   - [x] a task and its child operations
   - [x] a connection
   - [x] the entire executor
-- [ ] Implement cancellation using `IORING_OP_ASYNC_CANCEL` where supported.
-- [ ] Handle completion/cancellation races without double resume or double free.
+- [x] Implement cancellation using `IORING_OP_ASYNC_CANCEL` where supported.
+- [x] Handle completion/cancellation races without double resume or double free.
 - [x] Decide and document whether cancellation is best-effort or completion-guaranteed.
-- [ ] Prevent `TcpStream` and `TcpListener` from synchronously closing a descriptor
+- [x] Prevent `TcpStream` and `TcpListener` from synchronously closing a descriptor
       while an operation still references it.
-- [ ] Protect against descriptor reuse causing a late operation to affect a new
+- [x] Protect against descriptor reuse causing a late operation to affect a new
       resource.
-- [ ] Define executor destruction as an explicit sequence: stop accepting work,
+- [x] Define executor destruction as an explicit sequence: stop accepting work,
       request cancellation, drain CQEs, destroy operation states, then destroy the
       ring and coroutine frames.
-- [ ] Add a wake mechanism so shutdown can interrupt a pending accept or wait.
+- [x] Add a wake mechanism so shutdown can interrupt a pending accept or wait.
 - [x] Define buffer ownership requirements for every async API.
-- [ ] Ensure non-owning spans cannot outlive their backing storage while submitted.
-- [ ] Add structured task ownership so parent/child shutdown is deterministic.
+- [x] Resolve non-owning-span enforcement: deferred to an owning/pinned-buffer API;
+      the current API explicitly makes backing-storage lifetime a caller contract.
+- [x] Add structured task ownership so parent/child shutdown is deterministic.
 
 ### Required tests
 
-- [ ] Cancel before submission.
-- [ ] Cancel after submission but before completion.
-- [ ] Completion wins a cancellation race.
-- [ ] Cancellation wins a completion race.
-- [ ] Close a stream with pending send and receive operations.
-- [ ] Shut down with a pending accept.
+- [x] Cancel before submission.
+- [x] Cancel after submission but before completion.
+- [x] Completion wins a cancellation race.
+- [x] Cancellation wins a completion race.
+- [x] Close a stream with pending send and receive operations.
+- [x] Shut down with a pending accept.
 - [x] Destroy an executor with pending operations.
-- [ ] Reuse the numeric value of a recently closed descriptor.
-- [ ] Run cancellation and shutdown tests repeatedly under ASan and UBSan.
+- [x] Reuse the numeric value of a recently closed descriptor.
+- [x] Run cancellation and shutdown tests repeatedly under ASan and UBSan.
 
 **Exit criteria:** No supported shutdown or cancellation sequence can cause a
 use-after-free, double resume, stranded coroutine, or descriptor-lifetime race.

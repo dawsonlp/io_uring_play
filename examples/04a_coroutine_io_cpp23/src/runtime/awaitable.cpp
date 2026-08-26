@@ -17,6 +17,13 @@ namespace io_uring_async_cpp23 {
 
 template<typename T>
 bool IoUringAwaitable<T>::await_suspend(std::coroutine_handle<> awaiter) {
+    if (!executor_->accepts_work()) {
+        preparation_error_ = Error(
+            Error::Code::Cancelled,
+            "Executor shutdown is in progress");
+        return false;
+    }
+
     operation_state_ = executor_->create_operation(awaiter);
 
     auto preparation = submit_operation();

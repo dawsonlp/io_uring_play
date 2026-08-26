@@ -13,11 +13,13 @@
 #include "../core/error.hpp"
 #include "../runtime/awaitable.hpp"
 #include "../runtime/executor.hpp"
+#include "../core/descriptor_state.hpp"
 #include <expected>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <span>
 #include <cstddef>
+#include <memory>
 
 namespace io_uring_async_cpp23 {
 
@@ -55,24 +57,20 @@ public:
      * @param executor The executor for async operations
      * @param fd The connected socket file descriptor
      */
-    TcpStream(IoUringExecutor& executor, int fd) noexcept
+    TcpStream(IoUringExecutor& executor, int fd)
         : executor_(&executor)
-        , fd_(fd) {}
+        , descriptor_(adopt_descriptor(fd)) {}
     
     // Move-only semantics
     TcpStream(TcpStream&& other) noexcept
         : executor_(other.executor_)
-        , fd_(other.fd_)
-    {
-        other.fd_ = -1;
-    }
+        , descriptor_(std::move(other.descriptor_)) {}
     
     TcpStream& operator=(TcpStream&& other) noexcept {
         if (this != &other) {
             close();
             executor_ = other.executor_;
-            fd_ = other.fd_;
-            other.fd_ = -1;
+            descriptor_ = std::move(other.descriptor_);
         }
         return *this;
     }
@@ -93,7 +91,7 @@ public:
      * @return SendAwaitable that yields std::expected<size_t, Error>
      */
     [[nodiscard]] SendAwaitable send(std::span<const std::byte> buffer) {
-        return SendAwaitable(*executor_, fd_, buffer);
+        return SendAwaitable(*executor_, descriptor_, buffer);
     }
     
     /**
@@ -106,7 +104,7 @@ public:
      * @return RecvAwaitable that yields std::expected<size_t, Error>
      */
     [[nodiscard]] RecvAwaitable receive(std::span<std::byte> buffer) {
-        return RecvAwaitable(*executor_, fd_, buffer);
+        return RecvAwaitable(*executor_, descriptor_, buffer);
     }
     
     /**
@@ -115,7 +113,7 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown_write() noexcept {
-        if (::shutdown(fd_, SHUT_WR) < 0) {
+        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_WR) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};
@@ -127,7 +125,7 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown_read() noexcept {
-        if (::shutdown(fd_, SHUT_RD) < 0) {
+        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_RD) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};
@@ -139,7 +137,7 @@ public:
      * @return std::expected<void, Error>
      */
     [[nodiscard]] std::expected<void, Error> shutdown() noexcept {
-        if (::shutdown(fd_, SHUT_RDWR) < 0) {
+        if (!descriptor_ || ::shutdown(descriptor_->fd(), SHUT_RDWR) < 0) {
             return std::unexpected(Error::from_errno(errno));
         }
         return {};
@@ -149,29 +147,28 @@ public:
      * @brief Get the socket file descriptor
      */
     [[nodiscard]] int fd() const noexcept {
-        return fd_;
+        return descriptor_ ? descriptor_->fd() : -1;
     }
     
     /**
      * @brief Check if the stream is valid
      */
     [[nodiscard]] bool is_open() const noexcept {
-        return fd_ >= 0;
+        return static_cast<bool>(descriptor_);
     }
     
     /**
-     * @brief Close the stream
+     * @brief Release this stream's descriptor ownership
+     *
+     * The descriptor closes after the last in-flight awaiter releases it.
      */
     void close() noexcept {
-        if (fd_ >= 0) {
-            ::close(fd_);
-            fd_ = -1;
-        }
+        descriptor_.reset();
     }
     
 private:
     IoUringExecutor* executor_;
-    int fd_;
+    std::shared_ptr<DescriptorState> descriptor_;
 };
 
 } // namespace io_uring_async_cpp23

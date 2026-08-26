@@ -1,8 +1,8 @@
 # Lifetime and Cancellation Semantics
 
 This document defines the ownership rules for executor, task, operation, buffer,
-and descriptor lifetimes. It distinguishes the implemented abrupt teardown safety
-path from the planned graceful cancellation path.
+and descriptor lifetimes. It distinguishes graceful cancellation from the abrupt
+ring-release fallback.
 
 ## Executor Lifetime
 
@@ -10,15 +10,17 @@ path from the planned graceful cancellation path.
 listener, stream, awaiter, and operation associated with an executor must be
 destroyed before or as part of that executor's shutdown.
 
-The destructor is the final safety boundary. It closes the io_uring instance
-before destroying operation states or coroutine frames. Closing the ring invokes
-the kernel ring-release path, which kills the context and waits for outstanding
+The destructor first stops new work and attempts the same cancellation-and-drain
+sequence as `shutdown()`. It then closes the io_uring instance before destroying
+any remaining operation states or coroutine frames. Closing the ring invokes the
+kernel ring-release path, which kills the context and waits for outstanding
 request references before freeing it. Only after that returns may coroutine-owned
-buffers and descriptors be destroyed.
+buffers and descriptors be destroyed. Ring release is the safe fallback if the
+graceful sequence reports an error.
 
-Abrupt destructor teardown does not resume suspended coroutines and is not the
-normal graceful-shutdown API. Its guarantee is memory and descriptor lifetime
-safety, not application-level completion notification.
+If graceful destructor teardown fails, the abrupt ring-release fallback does not
+resume any work still suspended at that point. Its guarantee is memory and
+descriptor lifetime safety, not application-level completion notification.
 
 ## Operation Lifetime
 
@@ -46,11 +48,10 @@ will retain an explicit lifetime contract.
 
 ## Descriptor Lifetime
 
-A descriptor must remain open until every operation that names it is terminal.
-Closing a `TcpStream` or `TcpListener` while its operations remain pending is not
-currently a supported graceful operation. The planned connection shutdown path
-will request cancellation, resolve all completion races, and only then close the
-descriptor.
+A descriptor remains open until every operation that names it is terminal.
+`TcpStream`, `TcpListener`, and the awaiters they create share a small descriptor
+state. Closing the public stream or listener releases that owner's reference;
+the final in-flight awaiter closes the descriptor after its terminal result.
 
 This ordering also prevents a late operation from acting on an unrelated resource
 that reused the same numeric descriptor.
@@ -73,13 +74,18 @@ cancel request establish one final outcome.
   and coroutine frames, then close the ring.
 
 Structured parent/child task ownership is required before task cancellation can be
-considered complete.
+considered complete. A parent coroutine owns an awaited child `Task` in its frame;
+the child's final suspend resumes that parent. Spawned roots are owned by the
+executor until their full awaited chain completes. Executor shutdown cancels the
+I/O leaf, allowing child and parent frames to unwind in dependency order.
 
 ## Threading
 
-All executor and executor-bound operations are confined to the executor's owner
-thread. External threads may interact through ordinary OS resources, but they may
-not call executor, listener, stream, or awaiter methods.
+All executor and executor-bound operations except `request_stop()` are confined to
+the executor's owner thread. `request_stop()` is thread-safe: it sets an atomic stop
+flag and writes an `eventfd` watched by io_uring, waking an owner blocked in
+`run()`. External threads may not call other executor, listener, stream, or awaiter
+methods.
 
 ## Implementation Status
 
@@ -89,18 +95,26 @@ Implemented:
 - Completion-before-destruction during normal operation
 - Ring-before-frame ordering during abrupt teardown
 - Pending-operation destructor regression coverage
+- Explicit executor shutdown that rejects new work
+- Kernel cancellation and draining of original and cancellation CQEs
+- Exactly-once resumption when completion races cancellation
+- Deferred descriptor close while TCP operations remain in flight
+- Pending receive, send, and accept shutdown with descriptor-reuse coverage
+- Parent/awaited-child/root ownership through shutdown
+- Cross-thread stop request using an io_uring-watched `eventfd`
 
 Not yet implemented:
 
-- Explicit `shutdown()` and stop-new-work state
-- Async cancel SQEs and cancellation CQE routing
-- Completion/cancellation race resolution
 - Per-task and per-connection operation ownership
-- Wakeup of a blocked executor wait
-- Structured parent/child task ownership
+
+Deferred API work:
+
+- Enforce buffer lifetime mechanically. The current span APIs are deliberately
+  non-owning and therefore cannot detect destruction of caller storage. Replacing
+  or supplementing them with owning/pinned buffer operations is an API-generation
+  change; until then, violating the documented span lifetime is unsupported.
 
 ## Primary References
 
 - [liburing `io_uring_queue_exit(3)`](https://man7.org/linux/man-pages/man3/io_uring_queue_exit.3.html)
 - [Linux `io_uring_release()` and `io_ring_ctx_wait_and_kill()`](https://github.com/torvalds/linux/blob/master/io_uring/io_uring.c)
-

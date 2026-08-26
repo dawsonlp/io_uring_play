@@ -33,6 +33,7 @@ public:
         InvalidArgument,
         OutOfMemory,
         QueueFull,
+        Cancelled,
         TaskFailed,
         PermissionDenied,
         NotFound,
@@ -113,6 +114,7 @@ private:
 #endif
             case ENOMEM: return Code::OutOfMemory;
             case EINVAL: return Code::InvalidArgument;
+            case ECANCELED: return Code::Cancelled;
             case ETIMEDOUT: return Code::Timeout;
             case ECONNRESET:
             case EPIPE: return Code::ConnectionClosed;
@@ -132,6 +134,7 @@ private:
             case Code::InvalidArgument: return "Invalid Argument";
             case Code::OutOfMemory: return "Out of Memory";
             case Code::QueueFull: return "Submission Queue Full";
+            case Code::Cancelled: return "Cancelled";
             case Code::TaskFailed: return "Task Failed";
             case Code::PermissionDenied: return "Permission Denied";
             case Code::NotFound: return "Not Found";

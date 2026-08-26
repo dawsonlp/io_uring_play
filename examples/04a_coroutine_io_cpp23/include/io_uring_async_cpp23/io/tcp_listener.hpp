@@ -13,12 +13,14 @@
 #include "../core/error.hpp"
 #include "../runtime/awaitable.hpp"
 #include "../runtime/executor.hpp"
+#include "../core/descriptor_state.hpp"
 #include <expected>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
+#include <memory>
 
 namespace io_uring_async_cpp23 {
 
@@ -107,25 +109,28 @@ public:
             port = ntohs(addr.sin_port);
         }
         
-        return TcpListener(executor, fd, port);
+        try {
+            return TcpListener(executor, fd, port);
+        } catch (const std::bad_alloc&) {
+            return std::unexpected(Error(
+                Error::Code::OutOfMemory,
+                "Failed to allocate listener descriptor state"));
+        }
     }
     
     // Move-only semantics
     TcpListener(TcpListener&& other) noexcept
         : executor_(other.executor_)
-        , fd_(other.fd_)
+        , descriptor_(std::move(other.descriptor_))
         , port_(other.port_) 
-    {
-        other.fd_ = -1;
-    }
+    {}
     
     TcpListener& operator=(TcpListener&& other) noexcept {
         if (this != &other) {
             close();
             executor_ = other.executor_;
-            fd_ = other.fd_;
+            descriptor_ = std::move(other.descriptor_);
             port_ = other.port_;
-            other.fd_ = -1;
         }
         return *this;
     }
@@ -145,7 +150,7 @@ public:
      * @return AcceptAwaitable that yields std::expected<int, Error>
      */
     [[nodiscard]] AcceptAwaitable accept() {
-        return AcceptAwaitable(*executor_, fd_);
+        return AcceptAwaitable(*executor_, descriptor_);
     }
     
     /**
@@ -159,27 +164,26 @@ public:
      * @brief Get the socket file descriptor
      */
     [[nodiscard]] int fd() const noexcept {
-        return fd_;
+        return descriptor_ ? descriptor_->fd() : -1;
     }
     
     /**
-     * @brief Close the listener
+     * @brief Release this listener's descriptor ownership
+     *
+     * The descriptor closes after the last in-flight accept releases it.
      */
     void close() noexcept {
-        if (fd_ >= 0) {
-            ::close(fd_);
-            fd_ = -1;
-        }
+        descriptor_.reset();
     }
     
 private:
-    TcpListener(IoUringExecutor& executor, int fd, uint16_t port) noexcept
+    TcpListener(IoUringExecutor& executor, int fd, uint16_t port)
         : executor_(&executor)
-        , fd_(fd)
+        , descriptor_(adopt_descriptor(fd))
         , port_(port) {}
     
     IoUringExecutor* executor_;
-    int fd_;
+    std::shared_ptr<DescriptorState> descriptor_;
     uint16_t port_;
 };
 

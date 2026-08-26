@@ -16,11 +16,13 @@
 #include "../core/error.hpp"
 #include "../core/io_uring_wrapper.hpp"
 #include "operation_state.hpp"
+#include "../core/descriptor_state.hpp"
 #include <coroutine>
 #include <cstddef>
 #include <expected>
 #include <optional>
 #include <span>
+#include <memory>
 
 namespace io_uring_async_cpp23 {
 
@@ -151,6 +153,15 @@ public:
         , fd_(fd)
         , addr_{}
         , addrlen_(sizeof(addr_)) {}
+
+    AcceptAwaitable(
+        IoUringExecutor& executor,
+        std::shared_ptr<DescriptorState> descriptor)
+        : IoUringAwaitable(executor)
+        , descriptor_(std::move(descriptor))
+        , fd_(descriptor_ ? descriptor_->fd() : -1)
+        , addr_{}
+        , addrlen_(sizeof(addr_)) {}
     
     /**
      * @brief Get the client address after successful accept
@@ -165,6 +176,7 @@ protected:
     std::expected<int, Error> process_result(int res) override;
     
 private:
+    std::shared_ptr<DescriptorState> descriptor_;
     int fd_;
     sockaddr_storage addr_;
     socklen_t addrlen_;
@@ -181,12 +193,22 @@ public:
         , fd_(fd)
         , buffer_(buffer)
         , flags_(flags) {}
+
+    SendAwaitable(IoUringExecutor& executor,
+                  std::shared_ptr<DescriptorState> descriptor,
+                  std::span<const std::byte> buffer, int flags = 0)
+        : IoUringAwaitable(executor)
+        , descriptor_(std::move(descriptor))
+        , fd_(descriptor_ ? descriptor_->fd() : -1)
+        , buffer_(buffer)
+        , flags_(flags) {}
     
 protected:
     std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
+    std::shared_ptr<DescriptorState> descriptor_;
     int fd_;
     std::span<const std::byte> buffer_;
     int flags_;
@@ -203,12 +225,22 @@ public:
         , fd_(fd)
         , buffer_(buffer)
         , flags_(flags) {}
+
+    RecvAwaitable(IoUringExecutor& executor,
+                  std::shared_ptr<DescriptorState> descriptor,
+                  std::span<std::byte> buffer, int flags = 0)
+        : IoUringAwaitable(executor)
+        , descriptor_(std::move(descriptor))
+        , fd_(descriptor_ ? descriptor_->fd() : -1)
+        , buffer_(buffer)
+        , flags_(flags) {}
     
 protected:
     std::expected<void, Error> submit_operation() override;
     std::expected<size_t, Error> process_result(int res) override;
     
 private:
+    std::shared_ptr<DescriptorState> descriptor_;
     int fd_;
     std::span<std::byte> buffer_;
     int flags_;
