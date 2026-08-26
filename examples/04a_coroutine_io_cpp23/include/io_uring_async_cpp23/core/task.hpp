@@ -1,10 +1,9 @@
 /**
  * @file task.hpp
- * @brief Task<T> - C++23 coroutine type with deducing this
+ * @brief Lazy, move-only coroutine task type
  * 
  * Provides Task<T>, a coroutine type that represents an async computation.
- * This C++23 version uses 'deducing this' to eliminate duplicate overloads,
- * reducing code by ~100 lines compared to the C++20 version.
+ * Supports nested continuations, value results, and exception propagation.
  */
 
 #pragma once
@@ -88,8 +87,7 @@ public:
     /**
      * @brief Get the result (throws if exception was stored)
      * 
-     * C++23: Using deducing this to handle all value categories with one template.
-     * This replaces 3 separate overloads in the C++20 version.
+     * Uses deducing this to handle value categories with one template.
      */
     template<typename Self>
     auto&& result(this Self&& self) {
@@ -203,11 +201,6 @@ private:
  * 
  * Task is the fundamental coroutine type in this library. It represents
  * an async computation that will produce a value of type T (or void).
- * 
- * C++23 improvements:
- * - Uses deducing this to eliminate duplicate await_resume() overloads
- * - Simpler implementation with same functionality as C++20 version
- * - ~35% less code in Task class itself
  * 
  * Key properties:
  * - Lazy evaluation: doesn't start until co_await'ed
@@ -335,8 +328,7 @@ public:
     /**
      * @brief Awaitable interface: get the result
      * 
-     * C++23: Using deducing this to handle all value categories with one template.
-     * In C++20, this required 3 separate overloads (&, const &, &&).
+     * Uses deducing this to handle value categories with one template.
      * The void specialization uses a separate overload since auto&& cannot
      * deduce to void.
      */

@@ -3,7 +3,6 @@
  * @brief Error type for the io_uring async library
  * 
  * Provides a comprehensive error type that can represent various I/O errors.
- * This file is identical to the C++20 version as error handling basics haven't changed.
  */
 
 #pragma once

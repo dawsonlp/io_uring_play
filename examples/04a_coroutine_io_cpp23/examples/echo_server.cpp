@@ -2,7 +2,7 @@
  * @file echo_server.cpp
  * @brief Simple TCP echo server using io_uring_async_cpp23
  * 
- * Demonstrates the full API surface:
+ * Demonstrates the primary TCP API:
  * - IoUringExecutor::create()  - Create the event loop
  * - TcpListener::bind()        - Bind and listen on a port
  * - TcpListener::accept()      - Accept incoming connections (co_await)
@@ -82,8 +82,7 @@ Task<void> server(IoUringExecutor& executor, uint16_t port,
         
         // Create a TcpStream from the accepted fd and handle it
         TcpStream stream(executor, client_fd.value());
-        // In a full implementation, we'd spawn this as a separate task
-        // For this demo, we handle one client at a time
+        // This educational example handles one client at a time.
         co_await handle_client(std::move(stream));
     }
 }

@@ -1,354 +1,139 @@
-# io_uring_async_cpp23 - C++23 Coroutine-Based io_uring Library
+# Coroutine I/O with C++23 and io_uring
 
-A modern C++23 async I/O library for Linux that combines coroutines with io_uring.
+This directory contains an educational C++23 runtime built directly on
+`liburing`. It demonstrates coroutine suspension, stable completion routing,
+TCP stream operations, cancellation during executor shutdown, and explicit
+resource-lifetime rules.
 
-**This is the C++23 evolution of Example 04**, demonstrating how C++23 features simplify async I/O implementation.
+## Project status
 
-## Key Improvements Over C++20 Version
+The example is under active architectural development. It is tested and useful
+for learning, experiments, and design review, but it is not presented as a
+production-ready networking library or a performance reference.
 
-| Feature | C++20 (Example 04) | C++23 (This Example) |
-|---------|-------------------|----------------------|
-| Error Handling | Custom Result<T,E> (~300 lines) | std::expected (0 lines) |
-| Overload Reduction | 3x per method | 1 (deducing this) |
-| Code Size | ~1,550 lines | ~1,060 lines |
-| **Total Reduction** | — | **-32%** |
+Implemented and tested:
 
-## C++23 Features Used
+- `Task<T>` and `Task<void>` coroutine types with nested exception propagation.
+- A heap-owned, non-movable, single-thread-confined executor.
+- Stable `OperationState` ownership and direct CQE routing.
+- File read and write awaitables with offsets and EOF behavior.
+- IPv4 and IPv6 TCP listeners, accept, send, receive, and `send_all()`.
+- Deferred descriptor closure while an operation retains a descriptor reference.
+- Executor-wide graceful shutdown using async cancellation and CQE draining.
+- A thread-safe `request_stop()` wake path using `eventfd`.
+- Debug, release, AddressSanitizer, and UndefinedBehaviorSanitizer test modes.
+- Kernel-independent runtime-state tests and live-kernel integration tests.
 
-1. **std::expected<T, E>** - Standard error handling type
-2. **Deducing this** - Eliminates duplicate member function overloads
-3. **std::print** - Modern formatted output
-4. **Enhanced constexpr** - Better compile-time validation
+Not implemented or not yet established:
+
+- Public per-operation, per-task, or per-connection cancellation APIs.
+- Mechanically enforced buffer ownership; asynchronous APIs accept non-owning
+  spans whose storage lifetime remains the caller's responsibility.
+- Cross-thread task submission or coroutine execution.
+- TLS, timers, multishot accept, provided-buffer rings, registered resources,
+  zero-copy operations, or an asynchronous close API.
+- Runtime opcode/feature probing and fallback selection.
+- A declared minimum Linux kernel, `liburing`, or GCC version.
+- Reproducible performance baselines or performance claims.
+
+See [IO_SEMANTICS.md](IO_SEMANTICS.md),
+[LIFETIME_SEMANTICS.md](LIFETIME_SEMANTICS.md), and
+[OPERATION_LIFECYCLE.md](OPERATION_LIFECYCLE.md) for the normative contracts.
 
 ## Requirements
 
-- **Linux kernel**: 6.1+ (5.19+ minimum)
-- **Compiler**: 
-  - GCC 13+ (recommended: GCC 14+)
-  - Clang 17+ (recommended: Clang 18+)
-- **Libraries**: liburing
+- Linux with `io_uring` available to the process.
+- `liburing` development headers and library.
+- A compiler capable of compiling the code as C++23, including
+  `std::expected` and `std::print`.
+- GNU Make.
 
-### Checking Your Compiler Version
+The minimum supported versions have not been established. The most recent local
+verification used GCC 15.2.0, `liburing` 2.14, and Linux 7.0.0. Those versions
+describe a verified development environment, not minimum requirements.
 
-```bash
-# GCC
-g++ --version
-# Need: g++ (GCC) 13.0 or later
+## Build and test
 
-# Clang
-clang++ --version
-# Need: clang version 17.0 or later
-```
-
-## Building
+From this directory:
 
 ```bash
-# Release build
-make
-
-# Debug build
-make debug
-
-# With sanitizers
-make asan  # Address sanitizer
-make ubsan # Undefined behavior sanitizer
-
-# Clean
-make clean
+make MODE=debug build
+make MODE=debug test
+make matrix
 ```
 
-## Quick Example - Echo Server
+`make matrix` builds and runs release, debug, ASan, and UBSan configurations in
+separate output directories.
 
-```cpp
-#include <io_uring_async_cpp23/io_uring_async_cpp23.hpp>
-#include <print>
+The unit suite does not require a working `io_uring` instance. Integration tests
+probe ring creation before running. If the host kernel, permissions, or seccomp
+policy prevents ring creation, affected integration tests report `SKIP` with exit
+status 77; other initialization and behavioral failures still fail the suite.
 
-using namespace io_uring_async_cpp23;
-
-Task<void> handle_client(TcpStream client) {
-    std::array<std::byte, 4096> buffer;
-    
-    while (true) {
-        // C++23: std::expected instead of custom Result
-        auto result = co_await client.receive(buffer);
-        if (!result || result.value() == 0) break;
-        
-        auto sent = co_await client.send_all(
-            std::span{buffer.data(), result.value()});
-        if (!sent) break;
-    }
-}
-
-int main() {
-    auto executor = IoUringExecutor::create();
-    if (!executor) {
-        std::print(stderr, "Failed to create executor: {}\n", 
-            executor.error().description());
-        return 1;
-    }
-    auto& runtime = **executor;
-    
-    runtime.spawn([&runtime]() -> Task<void> {
-        auto listener = TcpListener::bind(runtime, 8080);
-        if (!listener) {
-            std::print(stderr, "Failed to bind: {}\n",
-                listener.error().description());
-            co_return;
-        }
-        
-        std::print("Server listening on port 8080\n");
-        
-        while (true) {
-            auto client_fd = co_await listener->accept();
-            if (client_fd) {
-                runtime.spawn(handle_client(TcpStream(runtime, *client_fd)));
-            }
-        }
-    }());
-    
-    auto result = runtime.run();
-    if (!result) {
-        std::print(stderr, "Executor error: {}\n", 
-            result.error().description());
-        return 1;
-    }
-}
-```
-
-## Key Differences from C++20 Version
-
-### 1. Error Handling - std::expected vs Result<T,E>
-
-**C++20:**
-```cpp
-#include <io_uring_async/core/result.hpp>
-
-Result<int, Error> do_work() {
-    if (error) return Unexpected(Error::IoError);
-    return 42;
-}
-
-auto result = do_work();
-if (!result) {
-    std::cerr << "Error: " << result.error().message() << "\n";
-}
-```
-
-**C++23:**
-```cpp
-#include <expected>
-
-std::expected<int, Error> do_work() {
-    if (error) return std::unexpected(Error::IoError);
-    return 42;
-}
-
-auto result = do_work();
-if (!result) {
-    std::print(stderr, "Error: {}\n", result.error().message());
-}
-```
-
-### 2. Deducing This - Eliminating Overloads
-
-**C++20 (3 overloads needed):**
-```cpp
-T& await_resume() & {
-    return coro_.promise().result();
-}
-
-const T& await_resume() const & {
-    return coro_.promise().result();
-}
-
-T&& await_resume() && {
-    return std::move(coro_.promise().result());
-}
-```
-
-**C++23 (1 template handles all):**
-```cpp
-template<typename Self>
-auto&& await_resume(this Self&& self) {
-    return std::forward<Self>(self).coro_.promise().result();
-}
-```
-
-### 3. Modern Output - std::print vs iostream
-
-**C++20:**
-```cpp
-#include <iostream>
-#include <format>
-
-std::cout << std::format("Listening on port {}\n", port);
-```
-
-**C++23:**
-```cpp
-#include <print>
-
-std::print("Listening on port {}\n", port);
-```
-
-## Code Size Comparison
-
-### Core Library Components
-
-| File | C++20 Lines | C++23 Lines | Reduction |
-|------|-------------|-------------|-----------|
-| result.hpp | 300 | 0 | -300 |
-| task.hpp | 280 | 180 | -100 |
-| io_uring_wrapper.hpp | 200 | 180 | -20 |
-| executor.hpp | 220 | 200 | -20 |
-| awaitable.hpp | 100 | 90 | -10 |
-| tcp_listener.hpp | 120 | 110 | -10 |
-| tcp_stream.hpp | 150 | 140 | -10 |
-| **Total** | **1,370** | **900** | **-470 (-34%)** |
-
-## Performance
-
-**No performance difference** - C++23 abstractions are zero-cost:
-
-| Metric | C++20 | C++23 |
-|--------|-------|-------|
-| Throughput | 1,245,000 req/s | 1,247,000 req/s |
-| Latency (p50) | 85μs | 84μs |
-| Latency (p99) | 420μs | 418μs |
-| Binary size | 156KB | 152KB |
-
-## Migration from C++20 Version
-
-### Step 1: Update Compiler
+Additional stress coverage is available with:
 
 ```bash
-# Install GCC 13+ or Clang 17+
-sudo apt install g++-13  # Ubuntu/Debian
+make MODE=asan STRESS_RUNS=25 stress
 ```
 
-### Step 2: Update Build Flags
+ASan test runs explicitly enable leak detection. The resource integration test
+also compares open file-descriptor counts before and after executor, socket,
+listener, eventfd, and ring teardown.
 
-```makefile
-# Change from:
-CXXFLAGS := -std=c++20
-
-# To:
-CXXFLAGS := -std=c++23
-```
-
-### Step 3: Replace Includes
-
-```cpp
-// Remove:
-#include <io_uring_async/core/result.hpp>
-
-// Add:
-#include <expected>
-
-// Replace namespace if needed:
-using namespace io_uring_async;      // Old
-using namespace io_uring_async_cpp23; // New
-```
-
-### Step 4: Update Error Construction
-
-```cpp
-// Change:
-return Unexpected(error);
-
-// To:
-return std::unexpected(error);
-```
-
-That's it! The rest of the API is compatible.
-
-## Documentation
-
-- [DESIGN_CPP23.md](DESIGN_CPP23.md) - Comprehensive design document with C++23 features
-- [design_decisions.md](design_decisions.md) - C++23-specific design rationale
-- [../04_coroutine_io/DESIGN.md](../04_coroutine_io/DESIGN.md) - Original C++20 design
-
-## Compiler Support
-
-### GCC
-
-| Version | std::expected | deducing this | std::print | Status |
-|---------|--------------|---------------|------------|--------|
-| 12 | ❌ | ❌ | ❌ | Not supported |
-| 13 | ✅ | ⚠️ (partial) | ❌ | Partial support |
-| 14 | ✅ | ✅ | ✅ | **Recommended** |
-
-### Clang
-
-| Version | std::expected | deducing this | std::print | Status |
-|---------|--------------|---------------|------------|--------|
-| 16 | ✅ | ❌ | ❌ | Partial support |
-| 17 | ✅ | ⚠️ (partial) | ✅ | Good |
-| 18 | ✅ | ✅ | ✅ | **Recommended** |
-
-## Why C++23?
-
-### Advantages
-
-✅ **32% less code** - Same functionality, simpler implementation  
-✅ **Standard compliance** - No custom Result type needed  
-✅ **Better tooling** - Standard types have better IDE support  
-✅ **Future-proof** - Built on C++ standards, not custom code  
-✅ **Same performance** - Zero-cost abstractions
-
-### When to Use C++20 Instead
-
-- Older compiler requirements (GCC 11, Clang 14)
-- Existing C++20 codebase
-- Conservative deployment environment
-- Learning path (easier to migrate C++20 → C++23)
-
-## Examples
-
-See `examples/` directory for complete working examples:
-
-- `echo_server.cpp` - Simple TCP echo server
-- More examples coming soon
-
-## Testing
+## Echo example
 
 ```bash
-# Build and run tests
-make test
-
-# Memory leak check
-make valgrind
+make MODE=debug examples
+./build/debug/bin/echo_server          # port 8080
+./build/debug/bin/echo_server 9000
 ```
 
-## Status
+The example handles one connected client at a time. It demonstrates the public
+TCP API but is not a concurrent or production-shaped server. Port parsing is
+strict: only decimal values from 1 through 65535 are accepted.
 
-✅ Core functionality implemented  
-✅ C++23 features integrated  
-✅ Documentation complete  
-⏳ Additional examples in progress
+## API outline
 
-## Comparison with Example 04
+```cpp
+auto executor = IoUringExecutor::create();
+if (!executor) {
+    return 1;
+}
 
-| Aspect | Example 04 (C++20) | This (C++23) |
-|--------|-------------------|--------------|
-| Standard | C++20 | C++23 |
-| Compiler | GCC 11+, Clang 14+ | GCC 13+, Clang 17+ |
-| Error Type | Custom Result<T,E> | std::expected |
-| Code Size | 1,550 lines | 1,060 lines |
-| Overloads | Many (3x per method) | Few (deducing this) |
-| Learning | Great for understanding | Great for modern C++ |
-| Production | Ready | Ready (with C++23 support) |
+auto& runtime = **executor;
+runtime.spawn(application(runtime));
 
-## License
+if (auto result = runtime.run(); !result) {
+    // Observe executor, root-task, submission, or completion failure.
+}
+```
 
-See LICENSE file for details.
+The executor and all bound listeners, streams, tasks, and awaiters must remain on
+the executor's creating thread. Only `request_stop()` may be called from another
+thread.
 
-## Learn More
+`ReadAwaitable`, `WriteAwaitable`, `SendAwaitable`, and `RecvAwaitable` borrow
+their buffers. Backing storage must remain alive and at a stable address until
+the await completes or executor teardown has released the kernel request.
 
-- [cppreference.com/cpp23](https://en.cppreference.com/w/cpp/23) - C++23 features
-- [io_uring documentation](https://kernel.dk/io_uring.pdf) - Kernel documentation
-- [Example 04](../04_coroutine_io/) - C++20 version for comparison
+## Source layout
 
----
+```text
+include/io_uring_async_cpp23/
+  core/       errors, tasks, descriptors, and the ring wrapper
+  runtime/    operation state, awaitables, and executor declarations
+  io/         TCP listener and stream abstractions
+src/runtime/  non-template runtime implementation
+examples/     echo server and example-local option parsing
+tests/unit/   kernel-independent contracts and deterministic state tests
+tests/integration/ live io_uring, file, TCP, cancellation, and lifetime tests
+tests/support/ always-on checks and kernel availability gate
+```
 
-**Note**: This is an educational project demonstrating C++23 features in async I/O. For production use, consider mature libraries like Boost.Asio or Seastar, or use this as a learning resource to understand modern C++ async patterns.
+## Development roadmap
+
+[ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
+is the authoritative roadmap. Unchecked items are not current features. In
+particular, portability policy and performance work remain incomplete, and the
+C++23 implementation has not yet been formally designated as the repository's
+canonical implementation.

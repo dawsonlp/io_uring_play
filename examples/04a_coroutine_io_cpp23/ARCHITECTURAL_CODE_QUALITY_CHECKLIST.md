@@ -338,20 +338,27 @@ and does not bypass lifecycle or error-handling invariants.
 
 **Goal:** Make the repository a trustworthy learning and reference resource.
 
+**Status:** In progress. Current behavior and limitations are documented without
+performance or production-readiness claims. The final cross-document consistency
+item deliberately remains open as a continuing gate until the full checklist is
+complete.
+
 - [ ] Designate the C++23 implementation as canonical, or port all correctness fixes
       and tests back to the C++20 implementation.
 - [ ] If C++20 remains historical, label it clearly and prevent users from mistaking
       it for the maintained implementation.
-- [ ] Update feature claims so zero-copy, batching, concurrency, cancellation, and
+- [x] Update feature claims so zero-copy, batching, concurrency, cancellation, and
       performance are described as implemented only when verified.
 - [ ] Document coroutine-frame, buffer, executor, descriptor, and operation-state
       ownership with lifecycle diagrams.
-- [ ] Document error propagation and root-task failure behavior.
-- [ ] Document shutdown and cancellation guarantees.
+- [x] Document error propagation and root-task failure behavior.
+- [x] Document shutdown and cancellation guarantees.
 - [ ] Provide one minimal example per public abstraction and one production-shaped
       server example.
-- [ ] Add a limitations section that is maintained alongside feature development.
+- [x] Add a limitations section that is maintained alongside feature development.
 - [ ] Keep the README, design documents, checklist, and public headers consistent.
+      This is a continuous final gate and is not closed until all earlier phases
+      have reached their exit criteria.
 
 **Exit criteria:** A reader can understand what is implemented, what is guaranteed,
 what remains experimental, and how every important resource is owned.

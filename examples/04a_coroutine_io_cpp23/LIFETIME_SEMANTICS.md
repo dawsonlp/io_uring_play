@@ -63,21 +63,21 @@ at the runtime boundary: requesting cancellation does not itself make an operati
 terminal, but the runtime continues processing until the original operation and
 cancel request establish one final outcome.
 
-- **Individual operation:** target one operation state and resolve its original
-  completion exactly once.
-- **Task:** request cancellation of every operation owned by the task, then resume
-  the task with a cancellation result after all targets are terminal.
-- **Connection:** stop accepting new operations, cancel all operations using the
-  descriptor, resolve their CQEs, then close the descriptor.
-- **Executor:** reject new tasks and operations, wake blocking waits, cancel all
-  pending operations, drain terminal CQEs, resolve tasks, destroy operation states
-  and coroutine frames, then close the ring.
+The only public cancellation boundary currently implemented is the executor.
+`shutdown()` rejects new tasks and operations, wakes blocking waits, prepares
+cancel requests for pending operations, drains terminal CQEs, and lets affected
+task chains unwind before destroying their state.
 
-Structured parent/child task ownership is required before task cancellation can be
-considered complete. A parent coroutine owns an awaited child `Task` in its frame;
-the child's final suspend resumes that parent. Spawned roots are owned by the
-executor until their full awaited chain completes. Executor shutdown cancels the
-I/O leaf, allowing child and parent frames to unwind in dependency order.
+The cancellation machinery targets individual operation states internally, but
+there is no public handle for cancelling one operation. There are also no public
+task- or connection-cancellation APIs. Closing a stream or listener releases
+descriptor ownership; it does not independently request cancellation of its
+in-flight operations.
+
+A parent coroutine owns an awaited child `Task` in its frame; the child's final
+suspend resumes that parent. Spawned roots are owned by the executor until their
+full awaited chain completes. Executor shutdown cancels a pending I/O leaf,
+allowing child and parent frames to unwind in dependency order.
 
 ## Threading
 
@@ -105,7 +105,7 @@ Implemented:
 
 Not yet implemented:
 
-- Per-task and per-connection operation ownership
+- Public per-operation, per-task, and per-connection cancellation
 
 Deferred API work:
 

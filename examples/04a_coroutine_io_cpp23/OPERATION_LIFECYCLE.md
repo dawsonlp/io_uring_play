@@ -1,8 +1,7 @@
 # Operation Lifecycle
 
-This document defines the target ownership and state-transition contract for one
-asynchronous io_uring operation. It is normative for the C++23 runtime; code that
-does not yet follow it is transitional and must not be treated as the final API.
+This document defines the implemented ownership and state-transition contract for
+one asynchronous io_uring operation. It is normative for the C++23 runtime.
 
 ## Ownership Model
 
@@ -44,9 +43,9 @@ is not terminal until its completion or cancellation CQE has been consumed.
 
 ## Creation
 
-The awaiter asks the executor to create an operation state. The state contains at
-least the operation kind, awaiting coroutine handle, raw result storage, and a
-lifecycle status. Its address must remain stable through CQE consumption.
+The awaiter asks the executor to create an operation state. The state contains the
+awaiting coroutine handle, raw result storage, lifecycle status, and cancellation
+bookkeeping. Its address must remain stable through CQE consumption.
 
 ## SQE Preparation
 
@@ -96,10 +95,10 @@ the executor first closes the ring and waits for the kernel release path, then
 destroys operation states and coroutine frames. This emergency path guarantees
 resource lifetime safety but does not resume suspended coroutines.
 
-Graceful executor shutdown will stop new work, request cancellation, drain terminal
-CQEs, resume or resolve affected tasks, destroy operation states and coroutine
-frames, and only then tear down the ring. That graceful path is not yet implemented;
-its full contract is specified in `LIFETIME_SEMANTICS.md`.
+Graceful executor shutdown stops new work, requests cancellation, drains terminal
+CQEs, resumes or resolves affected tasks, destroys operation states and coroutine
+frames, and only then tears down the ring. Its full contract is specified in
+`LIFETIME_SEMANTICS.md`.
 
 ## Threading Contract
 
@@ -107,7 +106,7 @@ The current runtime is single-thread confined and heap-owned so its address rema
 stable for executor-bound objects. Creation, spawning, SQE preparation,
 submission, CQE processing, and task resumption must occur on the executor's owner
 thread. External threads may use ordinary sockets in integration tests, but may not
-call executor or executor-bound APIs. Debug builds should enforce this contract.
+call executor or executor-bound APIs. Debug builds enforce this contract.
 
 Exceptions from awaited tasks propagate through `await_resume()`. Exceptions from
 spawned root tasks are observed by the executor and returned from `run()` or
