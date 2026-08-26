@@ -42,9 +42,21 @@ implemented or verified.
 
 ## Requirements
 
-All examples require Linux and `liburing` development files. Compiler standard
-and kernel-feature requirements vary by example; consult the selected example's
-README and Makefile.
+All runnable examples require Linux, GNU Make, and the `liburing` development
+headers and library. Language requirements vary by example:
+
+| Examples | Compiler requirement |
+| --- | --- |
+| `01_basic_file_read` | C11-capable C compiler |
+| `02_basic_file_read_cpp` | C++23-capable C++ compiler |
+| `04_coroutine_io` | C++20-capable C++ compiler with coroutine support |
+| `04a_coroutine_io_cpp23` | C++23-capable C++ compiler with `std::expected` and `std::print` |
+
+The C++23 build uses `-std=c++23`. Its most recently verified development
+environment used GCC 15.2.0, `liburing` 2.14, and Linux 7.0.0; these are verified
+versions, not declared minimums. See the
+[C++23 requirements and test instructions](examples/04a_coroutine_io_cpp23/README.md#requirements)
+for details.
 
 The project does not currently declare repository-wide minimum kernel,
 `liburing`, GCC, or Clang versions. Establishing and testing those minimums is an
