@@ -1029,6 +1029,6 @@ This document provides technical guidance for implementing the coroutine-based i
 ## References
 
 1. C++20 Coroutines Deep Dive: https://lewissbaker.github.io/
-2. io_uring Performance Guide: https://kernel.dk/io_uring.pdf
+2. io_uring overview and programming model: https://man7.org/linux/man-pages/man7/io_uring.7.html
 3. liburing API Reference: https://github.com/axboe/liburing/tree/master/man
 4. Linux io_uring Tutorial: https://unixism.net/loti/

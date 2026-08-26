@@ -814,7 +814,7 @@ This system design presents a modern approach to async networking on Linux by co
 
 ## Appendix B: References
 
-1. io_uring documentation: https://kernel.dk/io_uring.pdf
+1. Linux io_uring manual: https://man7.org/linux/man-pages/man7/io_uring.7.html
 2. C++20 Coroutines: https://en.cppreference.com/w/cpp/language/coroutines
 3. Linux kernel 6.17 io_uring: https://lwn.net/Articles/io_uring/
 4. liburing: https://github.com/axboe/liburing

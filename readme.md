@@ -76,7 +76,7 @@ See **[KERNEL_FEATURES_ROADMAP.md](KERNEL_FEATURES_ROADMAP.md)** for the planned
 
 ## References
 
-- [io_uring documentation (kernel.dk)](https://kernel.dk/io_uring.pdf)
+- [Linux `io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
 - [liburing repository](https://github.com/axboe/liburing)
 - [LWN io_uring coverage](https://lwn.net/Kernel/Index/#io_uring)
 

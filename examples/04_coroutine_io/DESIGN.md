@@ -633,7 +633,7 @@ This design presents a modern, educational, and practical approach to async I/O 
 ## Appendix B: References
 
 1. C++20 Coroutines: https://en.cppreference.com/w/cpp/language/coroutines
-2. io_uring: https://kernel.dk/io_uring.pdf
+2. Linux io_uring manual: https://man7.org/linux/man-pages/man7/io_uring.7.html
 3. Linux 6.17 io_uring features: https://lwn.net/Kernel/Index/#io_uring
 4. liburing: https://github.com/axboe/liburing
 5. Competitive Analysis: See `COMPETITIVE_ANALYSIS.md` in this repository

@@ -446,7 +446,7 @@ wrk -t 4 -c 1000 -d 30s http://localhost:8080/
 ## Learning Resources
 
 ### io_uring
-- [Official documentation](https://kernel.dk/io_uring.pdf)
+- [Linux `io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
 - [LWN articles](https://lwn.net/Articles/io_uring/)
 - [liburing](https://github.com/axboe/liburing)
 

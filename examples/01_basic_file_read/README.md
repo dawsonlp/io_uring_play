@@ -113,7 +113,7 @@ See [design_decisions.md](design_decisions.md) for detailed rationale behind:
 ## Learning Resources
 
 - [liburing documentation](https://github.com/axboe/liburing)
-- [io_uring introduction by kernel.dk](https://kernel.dk/io_uring.pdf)
+- [Linux `io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
 - [Linux man pages](https://man7.org/linux/man-pages/man7/io_uring.7.html)
 
 ## Next Steps

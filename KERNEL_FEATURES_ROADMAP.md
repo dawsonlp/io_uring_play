@@ -336,7 +336,7 @@ if (ring.features & IORING_FEAT_NATIVE_WORKERS) { ... }
 
 ## References
 
-- [io_uring master PDF](https://kernel.dk/io_uring.pdf)
+- [Linux `io_uring(7)` manual](https://man7.org/linux/man-pages/man7/io_uring.7.html)
 - [liburing repository](https://github.com/axboe/liburing)
 - [LWN io_uring coverage](https://lwn.net/Kernel/Index/#io_uring)
 - [Kernel 6.x release notes](https://kernelnewbies.org/LinuxVersions)

@@ -172,7 +172,7 @@ After the basic example works, potential enhancements include:
 
 ### 11.1 Documentation
 - liburing documentation: https://github.com/axboe/liburing
-- Linux io_uring documentation: https://kernel.dk/io_uring.pdf
+- Linux io_uring manual: https://man7.org/linux/man-pages/man7/io_uring.7.html
 - Kernel 6.17 release notes for io_uring changes
 
 ### 11.2 Example Resources
