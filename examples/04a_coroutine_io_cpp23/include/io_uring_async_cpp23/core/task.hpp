@@ -13,7 +13,7 @@
 #include <exception>
 #include <utility>
 #include <variant>
-#include <cassert>
+#include <stdexcept>
 
 namespace io_uring_async_cpp23 {
 
@@ -96,7 +96,9 @@ public:
         if (self.result_.index() == 2) {
             std::rethrow_exception(std::get<2>(self.result_));
         }
-        assert(self.result_.index() == 1 && "Result not set");
+        if (self.result_.index() != 1) {
+            throw std::logic_error("Task result requested before completion");
+        }
         return std::forward<Self>(self).result_.template get<1>();
     }
     
@@ -174,6 +176,9 @@ public:
     void result() {
         if (exception_) {
             std::rethrow_exception(exception_);
+        }
+        if (!has_result_) {
+            throw std::logic_error("Task result requested before completion");
         }
     }
     
@@ -285,15 +290,30 @@ public:
      * @brief Resume a root task scheduled by an executor
      */
     void resume() {
-        assert(coro_ && !coro_.done() && "Cannot resume an empty or completed task");
+        if (!coro_) {
+            throw std::logic_error("Cannot resume an empty task");
+        }
+        if (coro_.done()) {
+            throw std::logic_error("Cannot resume a completed task");
+        }
         coro_.resume();
+    }
+
+    /**
+     * @brief Observe a completed root task's stored exception, if any
+     */
+    void rethrow_if_failed() requires std::is_void_v<T> {
+        if (!coro_ || !coro_.done()) {
+            throw std::logic_error("Task result requested before completion");
+        }
+        coro_.promise().result();
     }
     
     /**
      * @brief Awaitable interface: check if result is ready
      */
     bool await_ready() const noexcept {
-        return false;  // Always lazy
+        return !coro_ || coro_.done();
     }
     
     /**
@@ -301,8 +321,11 @@ public:
      */
     template<typename Promise>
     std::coroutine_handle<> await_suspend(
-        std::coroutine_handle<Promise> awaiter) noexcept 
+        std::coroutine_handle<Promise> awaiter)
     {
+        if (!coro_) {
+            throw std::logic_error("Cannot await an empty task");
+        }
         // Store who's waiting for us
         coro_.promise().set_continuation(awaiter);
         // Resume this task's coroutine
@@ -318,11 +341,17 @@ public:
      * deduce to void.
      */
     auto await_resume() requires std::is_void_v<T> {
+        if (!coro_) {
+            throw std::logic_error("Cannot read an empty task");
+        }
         coro_.promise().result();
     }
     
     template<typename Self>
     auto&& await_resume(this Self&& self) requires (!std::is_void_v<T>) {
+        if (!self.coro_) {
+            throw std::logic_error("Cannot read an empty task");
+        }
         return std::forward<Self>(self).coro_.promise().result();
     }
     

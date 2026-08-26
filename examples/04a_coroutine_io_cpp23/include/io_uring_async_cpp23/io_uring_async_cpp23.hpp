@@ -41,8 +41,9 @@
  * int main() {
  *     auto executor = IoUringExecutor::create();
  *     if (!executor) return 1;
- *     executor->spawn(server(*executor));
- *     executor->run();
+ *     auto& runtime = **executor;
+ *     runtime.spawn(server(runtime));
+ *     runtime.run();
  * }
  * @endcode
  */

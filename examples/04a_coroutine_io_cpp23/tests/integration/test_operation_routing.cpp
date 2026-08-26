@@ -28,11 +28,12 @@ int main() {
 
     auto executor = IoUringExecutor::create(64);
     assert(executor.has_value());
+    auto& runtime = **executor;
 
     for (std::size_t index = 0; index < operation_count; ++index) {
         assert(::socketpair(AF_UNIX, SOCK_STREAM, 0, sockets[index].data()) == 0);
-        executor->spawn(receive_marker(
-            *executor, sockets[index][0], static_cast<std::byte>(index),
+        runtime.spawn(receive_marker(
+            runtime, sockets[index][0], static_cast<std::byte>(index),
             matched[index], resume_counts[index]));
     }
 
@@ -44,7 +45,7 @@ int main() {
         }
     });
 
-    assert(executor->run().has_value());
+    assert(runtime.run().has_value());
     sender.join();
 
     for (std::size_t index = 0; index < operation_count; ++index) {

@@ -19,7 +19,7 @@ UndefinedBehaviorSanitizer builds.
 
 These invariants govern every phase:
 
-- [ ] Every submitted SQE has exactly one stable operation-state object.
+- [x] Every submitted SQE has exactly one stable operation-state object.
 - [ ] An operation state remains alive until its CQE is consumed or cancellation
       is conclusively resolved.
 - [ ] Buffers, socket addresses, file descriptors, and coroutine handles remain
@@ -28,8 +28,8 @@ These invariants govern every phase:
       cancelled, or drained during shutdown.
 - [ ] Executor destruction never leaves a coroutine or kernel operation referring
       to destroyed state.
-- [ ] Queue saturation and submission failures preserve their original error.
-- [ ] Root-task failures are observable by the caller.
+- [x] Queue saturation and submission failures preserve their original error.
+- [x] Root-task failures are observable by the caller.
 - [ ] Public APIs do not claim stronger behavior than they implement.
 
 ---
@@ -85,7 +85,7 @@ depend.
       once direct operation-state routing is covered by tests.
 - [x] Define how unknown, duplicate, and stale CQEs are handled; never silently
       discard them.
-- [ ] Prevent an executor from being moved after executor-bound objects or tasks
+- [x] Prevent an executor from being moved after executor-bound objects or tasks
       can exist, or replace raw executor pointers with a stable runtime state.
 - [x] Document whether the runtime is single-thread confined and enforce that
       contract in debug builds.
@@ -96,8 +96,8 @@ depend.
 - [x] Multiple concurrent completions route to the correct coroutine.
 - [x] Out-of-order completion stimuli produce the correct results.
 - [x] Operation state remains valid across executor container growth.
-- [ ] Unknown or duplicate completion handling is deterministic and observable.
-- [ ] Executor movement cannot invalidate active streams, listeners, operations,
+- [x] Unknown or duplicate completion handling is deterministic and observable.
+- [x] Executor movement cannot invalidate active streams, listeners, operations,
       or coroutine frames.
 
 **Exit criteria:** Completion routing uses one stable state object per operation,
@@ -118,21 +118,21 @@ with no split ownership or result side channel.
 - [x] Remove the unused `raw_result_` field or make it the single authoritative
       completion result.
 - [x] Make `get_sqe()` report queue saturation distinctly from allocation failure.
-- [ ] Replace assertion-only task preconditions with defined release behavior where
+- [x] Replace assertion-only task preconditions with defined release behavior where
       misuse can occur through the public API.
-- [ ] Define how exceptions from awaited tasks propagate.
-- [ ] Define how exceptions from detached/root tasks are reported to `run()` or an
+- [x] Define how exceptions from awaited tasks propagate.
+- [x] Define how exceptions from detached/root tasks are reported to `run()` or an
       executor error handler.
-- [ ] Make executor submission failures resolve or cancel all affected operations;
+- [x] Make executor submission failures resolve or cancel all affected operations;
       never return while suspended coroutines remain stranded.
 
 ### Required tests
 
 - [x] SQ full before preparation.
-- [ ] `io_uring_submit()` failure.
-- [ ] Negative CQE result for every operation category.
-- [ ] Exception from a nested task.
-- [ ] Exception from a spawned root task.
+- [x] `io_uring_submit()` failure.
+- [x] Negative CQE result for every operation category.
+- [x] Exception from a nested task.
+- [x] Exception from a spawned root task.
 - [x] No manual synchronous reentrant resume on preparation failure.
 
 **Exit criteria:** Every error retains its cause, is observable at the correct API

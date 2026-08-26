@@ -67,17 +67,17 @@ examples: $(EXAMPLE_BIN)
 
 $(EXAMPLE_BIN): examples/echo_server.cpp $(LIB_OBJS) | $(BIN_DIR)
 	@echo "Building example: $@"
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -o $@
 
 test-build: $(UNIT_BINS) $(INTEGRATION_BINS)
 
 $(TEST_BIN_DIR)/unit/%: tests/unit/%.cpp $(LIB_OBJS) | $(TEST_BIN_DIR)/unit
 	@echo "Building unit test: $@"
-	$(CXX) $(CXXFLAGS) -UNDEBUG $(INCLUDES) $^ $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -o $@
 
 $(TEST_BIN_DIR)/integration/%: tests/integration/%.cpp $(LIB_OBJS) | $(TEST_BIN_DIR)/integration
 	@echo "Building integration test: $@"
-	$(CXX) $(CXXFLAGS) -UNDEBUG $(INCLUDES) $^ $(LDFLAGS) -pthread -o $@
+	$(CXX) $(CXXFLAGS) -UNDEBUG -DIO_URING_ASYNC_TESTING $(INCLUDES) $< $(LIB_OBJS) $(LDFLAGS) -pthread -o $@
 
 unit-test: $(UNIT_BINS)
 	@set -e; for test in $(UNIT_BINS); do echo "Running $$test"; $$test; done

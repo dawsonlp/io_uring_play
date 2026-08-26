@@ -28,11 +28,12 @@ int main() {
 
     auto executor = IoUringExecutor::create(1);
     assert(executor.has_value());
+    auto& runtime = **executor;
 
     std::optional<Error> first_error;
     std::optional<Error> second_error;
-    executor->spawn(receive_once(*executor, first[0], first_error));
-    executor->spawn(receive_once(*executor, second[0], second_error));
+    runtime.spawn(receive_once(runtime, first[0], first_error));
+    runtime.spawn(receive_once(runtime, second[0], second_error));
 
     std::jthread sender([fd = first[1]] {
         const std::byte marker{0x2a};
@@ -40,7 +41,7 @@ int main() {
         ::close(fd);
     });
 
-    assert(executor->run().has_value());
+    assert(runtime.run().has_value());
     sender.join();
     ::close(second[1]);
 

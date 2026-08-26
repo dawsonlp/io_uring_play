@@ -25,7 +25,9 @@
 #include <memory>
 #include <functional>
 #include <cassert>
+#include <optional>
 #include <thread>
+#include <vector>
 
 namespace io_uring_async_cpp23 {
 
@@ -42,8 +44,9 @@ namespace io_uring_async_cpp23 {
  * @code
  * auto executor = IoUringExecutor::create();
  * if (!executor) { return 1; }
- * executor->spawn(my_async_task());
- * auto result = executor->run();
+ * auto& runtime = **executor;
+ * runtime.spawn(my_async_task());
+ * auto result = runtime.run();
  * @endcode
  */
 class IoUringExecutor {
@@ -52,9 +55,9 @@ public:
      * @brief Create an executor with the specified queue depth
      * 
      * @param queue_depth io_uring queue depth (default 256)
-     * @return std::expected containing executor or error
+     * @return A stable, heap-owned executor or an initialization error
      */
-    [[nodiscard]] static std::expected<IoUringExecutor, Error> create(
+    [[nodiscard]] static std::expected<std::unique_ptr<IoUringExecutor>, Error> create(
         unsigned queue_depth = 256) noexcept 
     {
         auto ring_result = IoUring::create(queue_depth);
@@ -62,7 +65,8 @@ public:
             return std::unexpected(ring_result.error());
         }
         
-        return IoUringExecutor(std::move(ring_result.value()));
+        return std::unique_ptr<IoUringExecutor>(
+            new IoUringExecutor(std::move(ring_result.value())));
     }
     
     /**
@@ -98,13 +102,19 @@ public:
                 task->resume();
             }
 
-            remove_completed_tasks();
+            auto task_result = remove_completed_tasks();
+            if (!task_result) {
+                return std::unexpected(task_result.error());
+            }
             
             // If we have pending I/O operations, wait for completions
             if (!operations_.empty()) {
-                auto submit_result = ring_.submit();
+                auto submit_result = submit_pending();
                 if (!submit_result) {
-                    return std::unexpected(submit_result.error());
+                    const auto error = submit_result.error();
+                    fail_all_operations(error);
+                    (void)remove_completed_tasks();
+                    return std::unexpected(error);
                 }
                 
                 // Wait for at least one completion
@@ -140,7 +150,10 @@ public:
                     }
                 }
 
-                remove_completed_tasks();
+                task_result = remove_completed_tasks();
+                if (!task_result) {
+                    return std::unexpected(task_result.error());
+                }
             }
         }
         
@@ -168,13 +181,19 @@ public:
             tasks_processed++;
         }
 
-        remove_completed_tasks();
+        auto task_result = remove_completed_tasks();
+        if (!task_result) {
+            return std::unexpected(task_result.error());
+        }
         
         // Check for I/O completions
         if (!operations_.empty()) {
-            auto submit_result = ring_.submit();
+            auto submit_result = submit_pending();
             if (!submit_result) {
-                return std::unexpected(submit_result.error());
+                const auto error = submit_result.error();
+                fail_all_operations(error);
+                (void)remove_completed_tasks();
+                return std::unexpected(error);
             }
             
             io_uring_cqe* cqe;
@@ -198,7 +217,10 @@ public:
                     }
                 } while (peek_result.value());
 
-                remove_completed_tasks();
+                task_result = remove_completed_tasks();
+                if (!task_result) {
+                    return std::unexpected(task_result.error());
+                }
             }
         }
         
@@ -237,8 +259,17 @@ public:
         OperationState* state) {
         assert_owner_thread();
         auto operation = operations_.find(state);
-        if (operation == operations_.end() ||
-            operation->second->status != OperationState::Status::Completed) {
+        if (operation == operations_.end()) {
+            return std::unexpected(Error(
+                Error::Code::InvalidArgument,
+                "Unknown operation result"));
+        }
+        if (operation->second->status == OperationState::Status::Failed) {
+            auto error = std::move(*operation->second->error);
+            operations_.erase(operation);
+            return std::unexpected(std::move(error));
+        }
+        if (operation->second->status != OperationState::Status::Completed) {
             return std::unexpected(Error(
                 Error::Code::InvalidArgument,
                 "Operation result requested before completion"));
@@ -248,12 +279,24 @@ public:
         operations_.erase(operation);
         return result;
     }
+
+#ifdef IO_URING_ASYNC_TESTING
+    void test_fail_next_submit(Error error) {
+        next_submit_error_ = std::move(error);
+    }
+
+    [[nodiscard]] std::expected<void, Error> test_process_completion(
+        io_uring_cqe* cqe) {
+        return process_completion(cqe);
+    }
+#endif
     
-    // Move-only semantics
+    // The factory provides stable heap ownership. Executor-bound objects keep
+    // raw references to this address, so the executor itself cannot be moved.
     IoUringExecutor(const IoUringExecutor&) = delete;
     IoUringExecutor& operator=(const IoUringExecutor&) = delete;
-    IoUringExecutor(IoUringExecutor&&) = default;
-    IoUringExecutor& operator=(IoUringExecutor&&) = default;
+    IoUringExecutor(IoUringExecutor&&) = delete;
+    IoUringExecutor& operator=(IoUringExecutor&&) = delete;
     
 private:
     /**
@@ -265,6 +308,35 @@ private:
     void assert_owner_thread() const noexcept {
         assert(owner_thread_ == std::this_thread::get_id() &&
                "IoUringExecutor used from a non-owner thread");
+    }
+
+    [[nodiscard]] std::expected<int, Error> submit_pending() {
+#ifdef IO_URING_ASYNC_TESTING
+        if (next_submit_error_) {
+            auto error = std::move(*next_submit_error_);
+            next_submit_error_.reset();
+            return std::unexpected(std::move(error));
+        }
+#endif
+        return ring_.submit();
+    }
+
+    void fail_all_operations(const Error& error) {
+        std::vector<std::coroutine_handle<>> continuations;
+        continuations.reserve(operations_.size());
+        for (auto& [state_ptr, state] : operations_) {
+            (void)state_ptr;
+            if (state->status == OperationState::Status::Pending) {
+                state->status = OperationState::Status::Failed;
+                state->error = error;
+                continuations.push_back(state->continuation);
+            }
+        }
+        for (auto continuation : continuations) {
+            if (continuation) {
+                continuation.resume();
+            }
+        }
     }
     
     /**
@@ -290,10 +362,27 @@ private:
         return {};
     }
 
-    void remove_completed_tasks() {
-        active_tasks_.remove_if([](const Task<void>& task) {
-            return task.done();
-        });
+    [[nodiscard]] std::expected<void, Error> remove_completed_tasks() {
+        for (auto task = active_tasks_.begin(); task != active_tasks_.end();) {
+            if (!task->done()) {
+                ++task;
+                continue;
+            }
+
+            try {
+                task->rethrow_if_failed();
+            } catch (const std::exception& exception) {
+                task = active_tasks_.erase(task);
+                return std::unexpected(Error(Error::Code::TaskFailed,
+                                             exception.what()));
+            } catch (...) {
+                task = active_tasks_.erase(task);
+                return std::unexpected(Error(Error::Code::TaskFailed,
+                                             "Unknown task exception"));
+            }
+            task = active_tasks_.erase(task);
+        }
+        return {};
     }
     
     IoUring ring_;
@@ -301,6 +390,9 @@ private:
     std::queue<std::list<Task<void>>::iterator> ready_queue_;
     std::unordered_map<OperationState*, std::unique_ptr<OperationState>> operations_;
     std::thread::id owner_thread_;
+#ifdef IO_URING_ASYNC_TESTING
+    std::optional<Error> next_submit_error_;
+#endif
 };
 
 } // namespace io_uring_async_cpp23

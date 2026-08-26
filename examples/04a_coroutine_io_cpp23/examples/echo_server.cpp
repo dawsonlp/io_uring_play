@@ -107,11 +107,12 @@ int main(int argc, char* argv[]) {
             executor.error().description());
         return 1;
     }
+    auto& runtime = **executor;
     
     std::optional<Error> startup_error;
-    executor->spawn(server(*executor, port, startup_error));
+    runtime.spawn(server(runtime, port, startup_error));
     
-    auto result = executor->run();
+    auto result = runtime.run();
     if (!result) {
         std::print(stderr, "Executor error: {}\n",
             result.error().description());

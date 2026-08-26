@@ -97,8 +97,12 @@ operation states and coroutine frames, and only then tears down the ring.
 
 ## Threading Contract
 
-The current runtime is single-thread confined. Creation, spawning, SQE preparation,
+The current runtime is single-thread confined and heap-owned so its address remains
+stable for executor-bound objects. Creation, spawning, SQE preparation,
 submission, CQE processing, and task resumption must occur on the executor's owner
 thread. External threads may use ordinary sockets in integration tests, but may not
 call executor or executor-bound APIs. Debug builds should enforce this contract.
 
+Exceptions from awaited tasks propagate through `await_resume()`. Exceptions from
+spawned root tasks are observed by the executor and returned from `run()` or
+`run_once()` as `Error::Code::TaskFailed`.

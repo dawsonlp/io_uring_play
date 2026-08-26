@@ -33,6 +33,7 @@ public:
         InvalidArgument,
         OutOfMemory,
         QueueFull,
+        TaskFailed,
         PermissionDenied,
         NotFound,
         AlreadyExists,
@@ -131,6 +132,7 @@ private:
             case Code::InvalidArgument: return "Invalid Argument";
             case Code::OutOfMemory: return "Out of Memory";
             case Code::QueueFull: return "Submission Queue Full";
+            case Code::TaskFailed: return "Task Failed";
             case Code::PermissionDenied: return "Permission Denied";
             case Code::NotFound: return "Not Found";
             case Code::AlreadyExists: return "Already Exists";

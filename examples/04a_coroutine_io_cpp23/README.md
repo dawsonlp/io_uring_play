@@ -84,9 +84,10 @@ int main() {
             executor.error().description());
         return 1;
     }
+    auto& runtime = **executor;
     
-    executor->spawn([]() -> Task<void> {
-        auto listener = co_await TcpListener::bind(8080);
+    runtime.spawn([&runtime]() -> Task<void> {
+        auto listener = TcpListener::bind(runtime, 8080);
         if (!listener) {
             std::print(stderr, "Failed to bind: {}\n",
                 listener.error().description());
@@ -96,14 +97,14 @@ int main() {
         std::print("Server listening on port 8080\n");
         
         while (true) {
-            auto client = co_await listener->accept();
-            if (client) {
-                executor.spawn(handle_client(std::move(*client)));
+            auto client_fd = co_await listener->accept();
+            if (client_fd) {
+                runtime.spawn(handle_client(TcpStream(runtime, *client_fd)));
             }
         }
     }());
     
-    auto result = executor->run();
+    auto result = runtime.run();
     if (!result) {
         std::print(stderr, "Executor error: {}\n", 
             result.error().description());

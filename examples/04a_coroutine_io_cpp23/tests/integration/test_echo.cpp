@@ -36,12 +36,13 @@ int main() {
 
     auto executor = IoUringExecutor::create(64);
     assert(executor.has_value());
-    auto listener = TcpListener::bind(*executor, 0);
+    auto& runtime = **executor;
+    auto listener = TcpListener::bind(runtime, 0);
     assert(listener.has_value());
     assert(listener->port() != 0);
 
     bool server_ok = false;
-    executor->spawn(echo_once(*executor, *listener, server_ok));
+    runtime.spawn(echo_once(runtime, *listener, server_ok));
 
     bool client_ok = false;
     std::jthread client([port = listener->port(), payload, &client_ok] {
@@ -65,7 +66,7 @@ int main() {
         ::close(fd);
     });
 
-    const auto run_result = executor->run();
+    const auto run_result = runtime.run();
     client.join();
 
     assert(run_result.has_value());
