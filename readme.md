@@ -53,7 +53,7 @@ headers and library. Language requirements vary by example:
 | `04a_coroutine_io_cpp23` | C++23-capable C++ compiler with `std::expected` and `std::print` |
 
 The C++23 build uses `-std=c++23`. Its most recently verified development
-environment used GCC 15.2.0, `liburing` 2.14, and Linux 7.0.0; these are verified
+environment used GCC 15.2.0, `liburing` 2.15, and Linux 7.0.0; these are verified
 versions, not declared minimums. See the
 [C++23 requirements and test instructions](examples/04a_coroutine_io_cpp23/README.md#requirements)
 for details.

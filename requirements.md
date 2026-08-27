@@ -33,6 +33,28 @@ Create a simple, working example application that demonstrates basic io_uring fu
 - Standard C library
 - Linux kernel headers (if needed for direct syscalls)
 
+### 2.4 liburing installation and provenance
+
+The project uses [liburing](https://github.com/axboe/liburing), the upstream
+userspace library for Linux `io_uring`. Ubuntu's `liburing-dev` and `liburing2`
+packages install under `/usr` and are managed by `apt`. A source-built release
+installed under `/usr/local` is unmanaged by `apt` and normally takes precedence
+for compiler headers, `pkg-config`, and dynamic linking.
+
+If both copies are present, an Ubuntu package upgrade does not remove or replace
+the `/usr/local` copy. Verify the selected installation before recording test
+results:
+
+```bash
+pkg-config --modversion liburing
+pkg-config --variable=prefix liburing
+ldconfig -p | grep liburing
+dpkg-query -W liburing-dev liburing2
+```
+
+The selected prefix and linker path should be recorded with the compiler, kernel,
+and liburing version whenever an environment is used for verification.
+
 ## 3. Functional Requirements
 
 ### 3.1 Core Functionality

@@ -301,9 +301,15 @@ than merely proving that headers compile and happy paths work.
 - [ ] Establish and document the minimum supported Linux kernel, liburing, and GCC
       versions.
 - [ ] Probe required opcodes and optional features at startup.
+- [ ] Evaluate liburing 2.15's `io_uring_register_query()` as one input to
+      capability discovery; retain explicit opcode and ring-feature checks where
+      they express the runtime's actual requirements.
 - [ ] Distinguish unsupported kernel functionality from permission/seccomp denial.
 - [ ] Provide explicit fallbacks only when they preserve the documented semantics.
 - [ ] Add feature gates for optional setup flags and modern operations.
+- [ ] Evaluate optional liburing 2.15 cBPF ring filtering after the required opcode
+      set and startup policy are stable; define the threat model, filter ownership,
+      permission failures, and behavior on kernels without filter support.
 - [ ] Test degraded operation on the minimum supported feature set.
 - [ ] Avoid using host-specific `-march=native` in distributable release builds;
       reserve it for an explicit native/benchmark target.
@@ -329,6 +335,9 @@ Phases 0 through 7 are complete.
       `IORING_SETUP_DEFER_TASKRUN` behind feature detection.
 - [ ] Evaluate multishot accept only after cancellation and shutdown are reliable.
 - [ ] Evaluate provided buffers/buffer rings only after buffer ownership is explicit.
+- [ ] Evaluate zero-copy receive and `io_uring_register_zcrx_ctrl()` only after
+      provided-buffer ownership, registration lifetimes, and feature probing are
+      implemented.
 - [ ] Evaluate registered files and buffers with clear registration lifetimes.
 - [ ] Add performance regression thresholds that are stable enough for CI.
 - [ ] Document benchmark hardware, kernel, liburing version, compiler flags, and

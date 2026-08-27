@@ -74,8 +74,11 @@ Terminology used throughout:
 - GNU Make.
 
 The minimum supported versions have not been established. The most recent local
-verification used GCC 15.2.0, `liburing` 2.14, and Linux 7.0.0. Those versions
-describe a verified development environment, not minimum requirements.
+verification used GCC 15.2.0, `liburing` 2.15 built from the
+[official release](https://github.com/axboe/liburing/releases/tag/liburing-2.15),
+and Linux 7.0.0. The release, debug, ASan, and UBSan matrix and the shutdown and
+routing stress suites passed against that build. These versions describe a
+verified development environment, not minimum requirements.
 
 ## Build and test
 
