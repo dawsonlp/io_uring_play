@@ -50,6 +50,9 @@ Read only as far as your goal requires:
 | [design_decisions.md](design_decisions.md) | Why the current architectural boundaries were chosen |
 | [ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md](ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md) | Completed work, open work, deferrals, and the definition of norm-setting |
 
+For kernel-version context across the repository, see the
+[io_uring kernel feature matrix](../../IO_URING_KERNEL_FEATURE_MATRIX.md).
+
 The semantic and lifecycle documents are normative: code and examples should
 match them. The design documents explain the implementation. The checklist is
 the roadmap; unchecked entries are not capabilities.

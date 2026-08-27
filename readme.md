@@ -90,6 +90,8 @@ skips while continuing to run its kernel-independent unit suite.
 - [`KERNEL_FEATURES_ROADMAP.md`](KERNEL_FEATURES_ROADMAP.md) is an exploratory
   feature-planning snapshot. It is not a statement that listed features are
   implemented.
+- [`IO_URING_KERNEL_FEATURE_MATRIX.md`](IO_URING_KERNEL_FEATURE_MATRIX.md)
+  maps kernel feature milestones to the operations used by the project.
 - The C++23
   [`ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md`](examples/04a_coroutine_io_cpp23/ARCHITECTURAL_CODE_QUALITY_CHECKLIST.md)
   is the authoritative status and roadmap for that implementation.
