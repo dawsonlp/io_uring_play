@@ -1,7 +1,7 @@
 # Proposal: C++26 Completion-Oriented Execution
 
 **Repository:** `dawsonlp/io_uring_play`  
-**Status:** Proposed; no implementation or test evidence yet  
+**Status:** Initial continuation and file-read prototypes verified; ownership and composition evaluation pending\
 **Experiment:** `examples/05_execution_cpp26/`  
 **Date:** 2026-11-20
 
@@ -84,6 +84,13 @@ These are questions to test, not conclusions.
 
 The existing C++23 test suite and design documents are references; passing them in that implementation does not prove the new implementation correct.
 
+## Continuation contract for the single-shot prototype
+
+- One owner thread starts I/O operations and drives the ring. An operation may complete inline during `start()` if it is rejected or stopped before submission. Submitted operations deliver their result on the ring owner thread. Downstream work runs there unless the composition explicitly requests a scheduler hop. A stop request from another thread must reach the owner without directly invoking the receiver.
+- Before invoking the receiver, copy the CQE result, retire the CQE and its dispatch bookkeeping, and release any internal lock. Keep any resources needed by the delivered result alive across the handoff. Receiver code may immediately start another operation or destroy the completed operation state. The dispatch and inline paths must therefore finish using that state before invoking the receiver.
+- An honored stop before submission or confirmed cancellation of the target by the runtime's stop machinery yields `set_stopped`. A successful target CQE yields `set_value` with the actual byte count, even if stop was requested. A zero-byte read is a value, interpreted according to the read's semantics. Submission and I/O failures yield `set_error`.
+- The cancellation request and its target have separate CQE identities. A cancellation CQE, including `-ENOENT` or `-EALREADY`, does not replace the target CQE. Retain kernel-referenced resources through target completion and keep any outstanding cancellation bookkeeping valid independently of the receiver. Reserve the target identity until the target CQE and any outstanding cancel CQE have been retired, so a delayed cancel cannot match a new operation. During graceful shutdown, stop admission and drive both kinds of CQEs until outstanding work has drained.
+
 ## Experimental sequence and exit criteria
 
 ### Phase 0 — Baseline and host verification
@@ -96,11 +103,13 @@ On the Ubuntu target, capture installed compiler, `liburing`, kernel, and build-
 
 Pin `stdexec` and build minimal senders/receivers covering value, error, stopped, scheduling, cancellation, composition, and (where supported) coroutine interoperability. Compile with GCC and Clang. Record which APIs are standardized and which are extensions.
 
+Exercise synchronous completion with a receiver that destroys the owning operation state. Record the thread used by inline and scheduled continuations. Use the pinned revision's timer example to check the experimental scheduler separately from file I/O.
+
 **Exit:** A tested explanation of the execution lifecycle independent of `io_uring`.
 
 ### Phase 2 — One actual completion
 
-Implement a known-data file read using `io_uring` and connect the result to a receiver. Compare direct `liburing` with the available `stdexec` integration. Observe submission, suspension/continuation, completion, and cleanup explicitly.
+Implement a known-data file-read sender over `liburing`. Compare with a direct `liburing` read and exercise the experimental `stdexec` context for the same read if the pinned revision exposes an appropriate API. Check byte counts, EOF and an error path. Test receiver-driven destruction and immediate submission of a follow-up read during CQE dispatch.
 
 **Exit:** Verified data, observable failures, and a documented operation/resource lifecycle.
 
@@ -108,13 +117,15 @@ Implement a known-data file read using `io_uring` and connect the result to a re
 
 Test stable operation state, borrowed versus owning buffers, descriptor reuse, SQ exhaustion, failed submissions, cancellation races, coroutine destruction, and executor shutdown. Run deterministic tests and sanitizer-enabled Linux tests.
 
+Drive both CQE arrival orders for stop races, including a successful target completion with cancellation still outstanding. Assert one receiver completion, retirement of both CQE identities, and resource release at the documented boundary.
+
 **Exit:** No known unsupported lifetime claim; critical state transitions covered by tests.
 
 ### Phase 4 — Composition
 
-Express dependent and concurrent reads, bounded work, cancellation propagation, and sequential coroutine code using the sender-based runtime. Compare with the C++23 approach for clarity and mechanism count.
+Compare two dependent reads and a bounded pair of concurrent reads against C++23 using equivalent buffer and cancellation contracts. Exercise both sender composition and sequential coroutine syntax over the same I/O sender. Record caller ownership obligations, allocations, scheduler hops and the code needed to propagate failure and stop. Identify any stronger guarantees separately so the comparison accounts for their implementation cost.
 
-**Exit:** Evidence of whether sender/receiver composition adds value over direct coroutine scheduling.
+**Exit:** Record whether sender/receiver composition makes either workload simpler while preserving observable outcomes and lifetimes. Use that evidence to decide whether to continue to TCP and streaming.
 
 ### Phase 5 — Network and streaming
 

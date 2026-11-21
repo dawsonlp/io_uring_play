@@ -1,0 +1,5 @@
+[wrap-git]
+url = https://github.com/NVIDIA/stdexec.git
+revision = 42a3d4bc339d42de980fa78f268f41e266e5bfd6
+depth = 1
+patch_directory = stdexec
